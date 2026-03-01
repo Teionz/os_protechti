@@ -1,6 +1,9 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* Google Fonts - Poppins (Display) + Inter (Body) */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
@@ -43,74 +46,76 @@
 }
 
 :root {
-  --primary: var(--color-blue-700);
-  --primary-foreground: var(--color-blue-50);
-  --sidebar-primary: var(--color-blue-600);
-  --sidebar-primary-foreground: var(--color-blue-50);
-  --chart-1: var(--color-blue-300);
-  --chart-2: var(--color-blue-500);
-  --chart-3: var(--color-blue-600);
-  --chart-4: var(--color-blue-700);
-  --chart-5: var(--color-blue-800);
+  /* ProTech Dark Tech Professional - Color Palette */
+  --primary: #00D9FF; /* Ciano brilhante */
+  --primary-foreground: #0F1419; /* Azul muito escuro */
+  --sidebar-primary: #1E90FF; /* Azul royal */
+  --sidebar-primary-foreground: #FFFFFF;
+  --chart-1: #00D9FF;
+  --chart-2: #1E90FF;
+  --chart-3: #10B981;
+  --chart-4: #F59E0B;
+  --chart-5: #EF4444;
   --radius: 0.65rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.235 0.015 65);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.235 0.015 65);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.235 0.015 65);
-  --secondary: oklch(0.98 0.001 286.375);
-  --secondary-foreground: oklch(0.4 0.015 65);
-  --muted: oklch(0.967 0.001 286.375);
-  --muted-foreground: oklch(0.552 0.016 285.938);
-  --accent: oklch(0.967 0.001 286.375);
-  --accent-foreground: oklch(0.141 0.005 285.823);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.92 0.004 286.32);
-  --input: oklch(0.92 0.004 286.32);
-  --ring: oklch(0.623 0.214 259.815);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.235 0.015 65);
-  --sidebar-accent: oklch(0.967 0.001 286.375);
-  --sidebar-accent-foreground: oklch(0.141 0.005 285.823);
-  --sidebar-border: oklch(0.92 0.004 286.32);
-  --sidebar-ring: oklch(0.623 0.214 259.815);
+  --background: #0F1419; /* Azul muito escuro */
+  --foreground: #FFFFFF; /* Branco puro */
+  --card: #1A1F2E; /* Azul escuro para cards */
+  --card-foreground: #FFFFFF;
+  --popover: #1A1F2E;
+  --popover-foreground: #FFFFFF;
+  --secondary: #1E90FF; /* Azul royal */
+  --secondary-foreground: #FFFFFF;
+  --muted: #4B5563; /* Cinza médio */
+  --muted-foreground: #A0AEC0; /* Cinza claro */
+  --accent: #00D9FF; /* Ciano */
+  --accent-foreground: #0F1419;
+  --destructive: #EF4444; /* Vermelho */
+  --destructive-foreground: #FFFFFF;
+  --border: #2D3748; /* Cinza escuro para bordas */
+  --input: #2D3748;
+  --ring: #00D9FF;
+  --sidebar: #1A1F2E;
+  --sidebar-foreground: #FFFFFF;
+  --sidebar-accent: #00D9FF;
+  --sidebar-accent-foreground: #0F1419;
+  --sidebar-border: #2D3748;
+  --sidebar-ring: #00D9FF;
 }
 
 .dark {
-  --primary: var(--color-blue-700);
-  --primary-foreground: var(--color-blue-50);
-  --sidebar-primary: var(--color-blue-500);
-  --sidebar-primary-foreground: var(--color-blue-50);
-  --background: oklch(0.141 0.005 285.823);
-  --foreground: oklch(0.85 0.005 65);
-  --card: oklch(0.21 0.006 285.885);
-  --card-foreground: oklch(0.85 0.005 65);
-  --popover: oklch(0.21 0.006 285.885);
-  --popover-foreground: oklch(0.85 0.005 65);
-  --secondary: oklch(0.24 0.006 286.033);
-  --secondary-foreground: oklch(0.7 0.005 65);
-  --muted: oklch(0.274 0.006 286.033);
-  --muted-foreground: oklch(0.705 0.015 286.067);
-  --accent: oklch(0.274 0.006 286.033);
-  --accent-foreground:  oklch(0.92 0.005 65);
-  --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.488 0.243 264.376);
-  --chart-1: var(--color-blue-300);
-  --chart-2: var(--color-blue-500);
-  --chart-3: var(--color-blue-600);
-  --chart-4: var(--color-blue-700);
-  --chart-5: var(--color-blue-800);
-  --sidebar: oklch(0.21 0.006 285.885);
-  --sidebar-foreground: oklch(0.85 0.005 65);
-  --sidebar-accent: oklch(0.274 0.006 286.033);
-  --sidebar-accent-foreground:  oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.488 0.243 264.376);
+  /* Dark mode uses same colors as root (already dark) */
+  --primary: #00D9FF;
+  --primary-foreground: #0F1419;
+  --sidebar-primary: #1E90FF;
+  --sidebar-primary-foreground: #FFFFFF;
+  --background: #0F1419;
+  --foreground: #FFFFFF;
+  --card: #1A1F2E;
+  --card-foreground: #FFFFFF;
+  --popover: #1A1F2E;
+  --popover-foreground: #FFFFFF;
+  --secondary: #1E90FF;
+  --secondary-foreground: #FFFFFF;
+  --muted: #4B5563;
+  --muted-foreground: #A0AEC0;
+  --accent: #00D9FF;
+  --accent-foreground: #0F1419;
+  --destructive: #EF4444;
+  --destructive-foreground: #FFFFFF;
+  --border: #2D3748;
+  --input: #2D3748;
+  --ring: #00D9FF;
+  --chart-1: #00D9FF;
+  --chart-2: #1E90FF;
+  --chart-3: #10B981;
+  --chart-4: #F59E0B;
+  --chart-5: #EF4444;
+  --sidebar: #1A1F2E;
+  --sidebar-foreground: #FFFFFF;
+  --sidebar-accent: #00D9FF;
+  --sidebar-accent-foreground: #0F1419;
+  --sidebar-border: #2D3748;
+  --sidebar-ring: #00D9FF;
 }
 
 @layer base {
@@ -118,8 +123,17 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Poppins', system-ui, -apple-system, sans-serif;
+    font-weight: 700;
+  }
+  h1 { @apply text-4xl; }
+  h2 { @apply text-3xl; }
+  h3 { @apply text-2xl; }
+  h4 { @apply text-xl; }
   button:not(:disabled),
   [role="button"]:not([aria-disabled="true"]),
   [type="button"]:not(:disabled),
@@ -134,30 +148,60 @@
 }
 
 @layer components {
-  /**
-   * Custom container utility that centers content and adds responsive padding.
-   *
-   * This overrides Tailwind's default container behavior to:
-   * - Auto-center content (mx-auto)
-   * - Add responsive horizontal padding
-   * - Set max-width for large screens
-   *
-   * Usage: <div className="container">...</div>
-   *
-   * For custom widths, use max-w-* utilities directly:
-   * <div className="max-w-6xl mx-auto px-4">...</div>
-   */
+  /* ProTech Dark Tech Professional - Custom Components */
+  
   .container {
     width: 100%;
     margin-left: auto;
     margin-right: auto;
-    padding-left: 1rem; /* 16px - mobile padding */
+    padding-left: 1rem;
     padding-right: 1rem;
   }
 
   .flex {
     min-height: 0;
     min-width: 0;
+  }
+
+  /* Glow effect for accent elements */
+  .glow-accent {
+    box-shadow: 0 0 20px rgba(0, 217, 255, 0.3);
+  }
+
+  .glow-accent:hover {
+    box-shadow: 0 0 30px rgba(0, 217, 255, 0.5);
+  }
+
+  /* Card flutuante */
+  .card-float {
+    @apply rounded-lg border border-border bg-card text-card-foreground shadow-lg transition-all duration-300;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  }
+
+  .card-float:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 15px 40px rgba(0, 217, 255, 0.2);
+  }
+
+  /* Botão com glow */
+  .btn-glow {
+    @apply relative inline-flex items-center justify-center rounded-lg bg-accent text-accent-foreground font-semibold px-6 py-3 transition-all duration-300;
+    box-shadow: 0 0 20px rgba(0, 217, 255, 0.3);
+  }
+
+  .btn-glow:hover {
+    box-shadow: 0 0 30px rgba(0, 217, 255, 0.6);
+    transform: scale(1.02);
+  }
+
+  /* Input com foco ciano */
+  input, textarea, select {
+    @apply bg-input border border-border rounded-lg px-4 py-2 text-foreground placeholder-muted-foreground transition-all duration-200;
+  }
+
+  input:focus, textarea:focus, select:focus {
+    @apply outline-none border-accent;
+    box-shadow: 0 0 15px rgba(0, 217, 255, 0.2);
   }
 
   @media (min-width: 640px) {

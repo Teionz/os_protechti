@@ -1,0 +1,116 @@
+# ============================================================================
+# ProTech OS - Arquivo de Variáveis de Ambiente
+# ============================================================================
+# Copie este arquivo para .env e preencha com seus dados reais
+# ============================================================================
+
+# ============================================================================
+# BANCO DE DADOS
+# ============================================================================
+DB_HOST=localhost
+DB_USER=protechti_user
+DB_PASSWORD=sua_senha_muito_segura_aqui
+DB_NAME=protechti_os
+DB_PORT=3306
+
+# ============================================================================
+# APLICAÇÃO
+# ============================================================================
+NODE_ENV=development
+PORT=3000
+APP_URL=http://localhost:3000
+APP_NAME=ProTech OS
+
+# ============================================================================
+# SEGURANÇA
+# ============================================================================
+JWT_SECRET=sua_chave_secreta_muito_segura_para_jwt_aqui_com_minimo_32_caracteres
+SESSION_SECRET=outra_chave_secreta_muito_segura_para_sessoes_aqui_com_minimo_32_caracteres
+CORS_ORIGIN=http://localhost:3000
+
+# ============================================================================
+# EMAIL (OPCIONAL)
+# ============================================================================
+SMTP_HOST=smtp.seudominio.com.br
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=seu_email@seudominio.com.br
+SMTP_PASSWORD=sua_senha_email
+SMTP_FROM=noreply@seudominio.com.br
+
+# ============================================================================
+# LOGGING
+# ============================================================================
+LOG_LEVEL=info
+LOG_FILE=./logs/app.log
+
+# ============================================================================
+# CACHE
+# ============================================================================
+CACHE_ENABLED=true
+CACHE_TTL=3600
+
+# ============================================================================
+# RATE LIMITING
+# ============================================================================
+RATE_LIMIT_ENABLED=true
+RATE_LIMIT_WINDOW_MS=900000
+RATE_LIMIT_MAX_REQUESTS=100
+
+# ============================================================================
+# ARQUIVOS
+# ============================================================================
+UPLOAD_DIR=./uploads
+MAX_FILE_SIZE=10485760
+ALLOWED_FILE_TYPES=pdf,doc,docx,xls,xlsx,jpg,jpeg,png,gif
+
+# ============================================================================
+# NOTIFICAÇÕES
+# ============================================================================
+NOTIFICATIONS_ENABLED=true
+NOTIFICATION_EMAIL_ON_NEW_OS=true
+NOTIFICATION_EMAIL_ON_OS_COMPLETED=true
+
+# ============================================================================
+# RELATÓRIOS
+# ============================================================================
+REPORTS_ENABLED=true
+REPORTS_FORMAT=pdf
+REPORTS_DIR=./reports
+
+# ============================================================================
+# INTEGRAÇÃO COM WHATSAPP (OPCIONAL)
+# ============================================================================
+WHATSAPP_ENABLED=false
+WHATSAPP_API_KEY=sua_chave_api_whatsapp
+WHATSAPP_PHONE_NUMBER=5517999999999
+
+# ============================================================================
+# INTEGRAÇÃO COM STRIPE (OPCIONAL)
+# ============================================================================
+STRIPE_ENABLED=false
+STRIPE_PUBLIC_KEY=pk_test_sua_chave_publica
+STRIPE_SECRET_KEY=sk_test_sua_chave_secreta
+STRIPE_WEBHOOK_SECRET=whsec_sua_chave_webhook
+
+# ============================================================================
+# GOOGLE MAPS (OPCIONAL)
+# ============================================================================
+GOOGLE_MAPS_ENABLED=false
+GOOGLE_MAPS_API_KEY=sua_chave_api_google_maps
+
+# ============================================================================
+# AMBIENTE DE PRODUÇÃO
+# ============================================================================
+# Descomente as linhas abaixo ao fazer deploy em produção
+
+# NODE_ENV=production
+# PORT=3000
+# APP_URL=https://seudominio.com.br
+# DB_HOST=seu_host_mysql_em_producao
+# DB_USER=seu_usuario_mysql_em_producao
+# DB_PASSWORD=sua_senha_mysql_em_producao
+# CORS_ORIGIN=https://seudominio.com.br
+# LOG_LEVEL=warn
+# RATE_LIMIT_ENABLED=true
+# RATE_LIMIT_MAX_REQUESTS=50
