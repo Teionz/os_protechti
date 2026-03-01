@@ -36,25 +36,25 @@ export default function Sidebar() {
     {
       label: "Clientes",
       icon: Users,
-      href: "/clientes",
+      href: "/clients",
       badge: null,
     },
     {
       label: "Produtos",
       icon: Package,
-      href: "/produtos",
+      href: "/products",
       badge: null,
     },
     {
       label: "Serviços",
       icon: Wrench,
-      href: "/servicos",
+      href: "/services",
       badge: null,
     },
     {
       label: "Relatórios",
       icon: BarChart3,
-      href: "/relatorios",
+      href: "/reports",
       badge: null,
     },
   ];
