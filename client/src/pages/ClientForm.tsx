@@ -3,13 +3,17 @@ import { Card } from "@/components/ui/card";
 import Layout from "@/components/Layout";
 import { useLocation } from "wouter";
 import { useState } from "react";
+import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 /**
  * ClientForm - Formulário de cadastro/edição de Cliente
  * Design: Dark Tech Professional com campos organizados
+ * Integrações: BrasilAPI (CNPJ) e ViaCEP (CEP)
  */
 export default function ClientForm() {
   const [, navigate] = useLocation();
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     nome: "",
     cnpjCpf: "",
@@ -34,6 +38,128 @@ export default function ClientForm() {
       ...prev,
       [name]: value,
     }));
+  };
+
+  /**
+   * Busca dados do CNPJ via BrasilAPI
+   */
+  const handleCNPJBlur = async () => {
+    const cnpj = formData.cnpjCpf.replace(/\D/g, "");
+
+    // Validar se é CNPJ (14 dígitos)
+    if (cnpj.length !== 14) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetch(
+        `https://api.brasil.io/api/v1/cnpj/${cnpj}/`,
+        {
+          headers: {
+            Authorization: "Token 6d8f3a9c8b2e1f4a7c9d3e5b8f1a4c7e",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        // Tentar com BrasilAPI alternativa
+        const altResponse = await fetch(
+          `https://brasilapi.com.br/api/cnpj/v1/${cnpj}`
+        );
+
+        if (!altResponse.ok) {
+          toast.error("CNPJ não encontrado");
+          setLoading(false);
+          return;
+        }
+
+        const data = await altResponse.json();
+
+        setFormData((prev) => ({
+          ...prev,
+          nome: data.name || "",
+          endereco: `${data.address || ""}`,
+          numero: data.number || "",
+          bairro: data.district || "",
+          cidade: data.city || "",
+          estado: data.state || "SP",
+          telefone: data.phone || "",
+          email: data.email || "",
+          cep: data.zip_code?.replace(/\D/g, "") || "",
+        }));
+
+        toast.success("Dados do CNPJ carregados com sucesso!");
+      } else {
+        const data = await response.json();
+
+        setFormData((prev) => ({
+          ...prev,
+          nome: data.name || "",
+          endereco: `${data.street || ""}`,
+          numero: data.number || "",
+          bairro: data.neighborhood || "",
+          cidade: data.city || "",
+          estado: data.state || "SP",
+          telefone: data.phone || "",
+          email: data.email || "",
+          cep: data.zip_code?.replace(/\D/g, "") || "",
+        }));
+
+        toast.success("Dados do CNPJ carregados com sucesso!");
+      }
+    } catch (error) {
+      console.error("Erro ao buscar CNPJ:", error);
+      toast.error("Erro ao buscar dados do CNPJ");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /**
+   * Busca dados do CEP via ViaCEP
+   */
+  const handleCEPBlur = async () => {
+    const cep = formData.cep.replace(/\D/g, "");
+
+    // Validar se é CEP válido (8 dígitos)
+    if (cep.length !== 8) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+
+      if (!response.ok) {
+        toast.error("CEP não encontrado");
+        setLoading(false);
+        return;
+      }
+
+      const data = await response.json();
+
+      if (data.erro) {
+        toast.error("CEP não encontrado");
+        setLoading(false);
+        return;
+      }
+
+      setFormData((prev) => ({
+        ...prev,
+        endereco: data.logradouro || "",
+        bairro: data.bairro || "",
+        cidade: data.localidade || "",
+        estado: data.uf || "SP",
+      }));
+
+      toast.success("Endereço carregado com sucesso!");
+    } catch (error) {
+      console.error("Erro ao buscar CEP:", error);
+      toast.error("Erro ao buscar dados do CEP");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -79,17 +205,24 @@ export default function ClientForm() {
               </div>
               <div>
                 <label className="block text-sm font-semibold text-foreground mb-2">
-                  CNPJ/CPF *
+                  CNPJ/CPF * 
+                  <span className="text-xs text-accent ml-2">(Auto-preenche ao sair do campo)</span>
                 </label>
-                <input
-                  type="text"
-                  name="cnpjCpf"
-                  value={formData.cnpjCpf}
-                  onChange={handleChange}
-                  placeholder="00.000.000/0000-00"
-                  className="w-full px-4 py-3 bg-background border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
-                  required
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    name="cnpjCpf"
+                    value={formData.cnpjCpf}
+                    onChange={handleChange}
+                    onBlur={handleCNPJBlur}
+                    placeholder="00.000.000/0000-00"
+                    className="w-full px-4 py-3 bg-background border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+                    required
+                  />
+                  {loading && (
+                    <Loader2 className="absolute right-3 top-3 w-5 h-5 text-accent animate-spin" />
+                  )}
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-semibold text-foreground mb-2">
@@ -143,6 +276,27 @@ export default function ClientForm() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
               <div className="md:col-span-2">
                 <label className="block text-sm font-semibold text-foreground mb-2">
+                  CEP *
+                  <span className="text-xs text-accent ml-2">(Auto-preenche ao sair do campo)</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    name="cep"
+                    value={formData.cep}
+                    onChange={handleChange}
+                    onBlur={handleCEPBlur}
+                    placeholder="00000-000"
+                    className="w-full px-4 py-3 bg-background border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+                    required
+                  />
+                  {loading && (
+                    <Loader2 className="absolute right-3 top-3 w-5 h-5 text-accent animate-spin" />
+                  )}
+                </div>
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-semibold text-foreground mb-2">
                   Rua/Avenida *
                 </label>
                 <input
@@ -192,20 +346,6 @@ export default function ClientForm() {
                   value={formData.bairro}
                   onChange={handleChange}
                   placeholder="Bairro"
-                  className="w-full px-4 py-3 bg-background border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-foreground mb-2">
-                  CEP *
-                </label>
-                <input
-                  type="text"
-                  name="cep"
-                  value={formData.cep}
-                  onChange={handleChange}
-                  placeholder="00000-000"
                   className="w-full px-4 py-3 bg-background border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
                   required
                 />
@@ -267,8 +407,15 @@ export default function ClientForm() {
             >
               Cancelar
             </Button>
-            <Button type="submit" className="btn-glow flex-1">
-              Salvar Cliente
+            <Button type="submit" className="btn-glow flex-1" disabled={loading}>
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Carregando...
+                </>
+              ) : (
+                "Salvar Cliente"
+              )}
             </Button>
           </div>
         </form>
