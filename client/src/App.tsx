@@ -10,6 +10,10 @@ import Dashboard from "./pages/Dashboard";
 import OSForm from "./pages/OSForm";
 import OSList from "./pages/OSList";
 import OSDetail from "./pages/OSDetail";
+import ClientList from "./pages/ClientList";
+import ClientForm from "./pages/ClientForm";
+import ProductList from "./pages/ProductList";
+import ProductForm from "./pages/ProductForm";
 
 
 function Router() {
@@ -21,6 +25,14 @@ function Router() {
       <Route path={"/os/edit/:id"} component={OSForm} />
       <Route path={"/os/list"} component={OSList} />
       <Route path={"/os/:id"} component={OSDetail} />
+      <Route path={"/clients"} component={ClientList} />
+      <Route path={"/clients/new"} component={ClientForm} />
+      <Route path={"/clients/edit/:id"} component={ClientForm} />
+      <Route path={"/clients/:id"} component={ClientList} />
+      <Route path={"/products"} component={ProductList} />
+      <Route path={"/products/new"} component={ProductForm} />
+      <Route path={"/products/edit/:id"} component={ProductForm} />
+      <Route path={"/products/:id"} component={ProductList} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />
