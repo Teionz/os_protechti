@@ -9,7 +9,7 @@ import { toast } from "sonner";
 /**
  * ClientForm - Formulário de cadastro/edição de Cliente
  * Design: Dark Tech Professional com campos organizados
- * Integrações: BrasilAPI (CNPJ) e ViaCEP (CEP)
+ * Integrações: Receita.ws (CNPJ) e ViaCEP (CEP)
  */
 export default function ClientForm() {
   const [, navigate] = useLocation();
@@ -41,7 +41,7 @@ export default function ClientForm() {
   };
 
   /**
-   * Busca dados do CNPJ via BrasilAPI
+   * Busca dados do CNPJ via Receita.ws
    */
   const handleCNPJBlur = async () => {
     const cnpj = formData.cnpjCpf.replace(/\D/g, "");
@@ -54,63 +54,46 @@ export default function ClientForm() {
     setLoading(true);
     try {
       const response = await fetch(
-        `https://api.brasil.io/api/v1/cnpj/${cnpj}/`,
+        `https://www.receitaws.com.br/v1/cnpj/${cnpj}`,
         {
           headers: {
-            Authorization: "Token 6d8f3a9c8b2e1f4a7c9d3e5b8f1a4c7e",
+            "Accept": "application/json",
           },
         }
       );
 
       if (!response.ok) {
-        // Tentar com BrasilAPI alternativa
-        const altResponse = await fetch(
-          `https://brasilapi.com.br/api/cnpj/v1/${cnpj}`
-        );
-
-        if (!altResponse.ok) {
-          toast.error("CNPJ não encontrado");
-          setLoading(false);
-          return;
-        }
-
-        const data = await altResponse.json();
-
-        setFormData((prev) => ({
-          ...prev,
-          nome: data.name || "",
-          endereco: `${data.address || ""}`,
-          numero: data.number || "",
-          bairro: data.district || "",
-          cidade: data.city || "",
-          estado: data.state || "SP",
-          telefone: data.phone || "",
-          email: data.email || "",
-          cep: data.zip_code?.replace(/\D/g, "") || "",
-        }));
-
-        toast.success("Dados do CNPJ carregados com sucesso!");
-      } else {
-        const data = await response.json();
-
-        setFormData((prev) => ({
-          ...prev,
-          nome: data.name || "",
-          endereco: `${data.street || ""}`,
-          numero: data.number || "",
-          bairro: data.neighborhood || "",
-          cidade: data.city || "",
-          estado: data.state || "SP",
-          telefone: data.phone || "",
-          email: data.email || "",
-          cep: data.zip_code?.replace(/\D/g, "") || "",
-        }));
-
-        toast.success("Dados do CNPJ carregados com sucesso!");
+        toast.error("Erro ao buscar CNPJ");
+        setLoading(false);
+        return;
       }
+
+      const data = await response.json();
+
+      if (data.status === "ERROR") {
+        toast.error("CNPJ não encontrado ou inválido");
+        setLoading(false);
+        return;
+      }
+
+      // Mapear dados da API para o formulário
+      setFormData((prev) => ({
+        ...prev,
+        nome: data.nome || "",
+        endereco: data.logradouro || "",
+        numero: data.numero || "",
+        bairro: data.bairro || "",
+        cidade: data.municipio || "",
+        estado: data.uf || "SP",
+        telefone: data.telefone || "",
+        email: data.email || "",
+        cep: data.cep?.replace(/\D/g, "") || "",
+      }));
+
+      toast.success("Dados do CNPJ carregados com sucesso!");
     } catch (error) {
       console.error("Erro ao buscar CNPJ:", error);
-      toast.error("Erro ao buscar dados do CNPJ");
+      toast.error("Erro ao buscar dados do CNPJ. Tente novamente.");
     } finally {
       setLoading(false);
     }
@@ -166,6 +149,7 @@ export default function ClientForm() {
     e.preventDefault();
     // Lógica de envio aqui
     console.log("Cliente salvo:", formData);
+    toast.success("Cliente salvo com sucesso!");
     navigate("/clients");
   };
 
