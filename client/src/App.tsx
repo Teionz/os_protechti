@@ -14,6 +14,8 @@ import ClientList from "./pages/ClientList";
 import ClientForm from "./pages/ClientForm";
 import ProductList from "./pages/ProductList";
 import ProductForm from "./pages/ProductForm";
+import ServiceList from "./pages/ServiceList";
+import ServiceForm from "./pages/ServiceForm";
 
 
 function Router() {
@@ -32,7 +34,11 @@ function Router() {
       <Route path={"/products"} component={ProductList} />
       <Route path={"/products/new"} component={ProductForm} />
       <Route path={"/products/edit/:id"} component={ProductForm} />
-      <Route path={"/products/:id"} component={ProductList} />
+       <Route path={"products/:id"} component={ProductList} />
+      <Route path={"services"} component={ServiceList} />
+      <Route path={"services/new"} component={ServiceForm} />
+      <Route path={"services/edit/:id"} component={ServiceForm} />
+      <Route path={"services/:id"} component={ServiceList} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />
