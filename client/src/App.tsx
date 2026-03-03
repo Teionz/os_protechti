@@ -18,6 +18,8 @@ import ServiceList from "./pages/ServiceList";
 import ServiceForm from "./pages/ServiceForm";
 import QuotationList from "./pages/QuotationList";
 import QuotationForm from "./pages/QuotationForm";
+import SalesList from "./pages/SalesList";
+import SalesForm from "./pages/SalesForm";
 
 
 function Router() {
@@ -45,6 +47,10 @@ function Router() {
       <Route path={"quotations/new"} component={QuotationForm} />
       <Route path={"quotations/edit/:id"} component={QuotationForm} />
       <Route path={"quotations/:id"} component={QuotationList} />
+      <Route path={"sales"} component={SalesList} />
+      <Route path={"sales/new"} component={SalesForm} />
+      <Route path={"sales/edit/:id"} component={SalesForm} />
+      <Route path={"sales/:id"} component={SalesList} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />

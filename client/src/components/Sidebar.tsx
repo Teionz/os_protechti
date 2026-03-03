@@ -9,6 +9,7 @@ import {
   Package,
   Wrench,
   ClipboardList,
+  ShoppingCart,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -56,6 +57,12 @@ export default function Sidebar() {
       label: "Orçamentos",
       icon: ClipboardList,
       href: "/quotations",
+      badge: null,
+    },
+    {
+      label: "Vendas",
+      icon: ShoppingCart,
+      href: "/sales",
       badge: null,
     },
     {
