@@ -8,6 +8,7 @@ import {
   BarChart3,
   Package,
   Wrench,
+  ClipboardList,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -49,6 +50,12 @@ export default function Sidebar() {
       label: "Serviços",
       icon: Wrench,
       href: "/services",
+      badge: null,
+    },
+    {
+      label: "Orçamentos",
+      icon: ClipboardList,
+      href: "/quotations",
       badge: null,
     },
     {
