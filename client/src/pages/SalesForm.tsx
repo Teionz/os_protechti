@@ -13,7 +13,7 @@ import { toast } from "sonner";
 /**
  * SalesForm - Formulário de cadastro/edição de Venda
  * Design: Dark Tech Professional
- * Funcionalidades: Dados gerais, itens de venda, cálculo de comissão
+ * Funcionalidades: Dados gerais, blocos separados de Serviços e Produtos
  */
 export default function SalesForm() {
   const [, navigate] = useLocation();
@@ -27,32 +27,57 @@ export default function SalesForm() {
     observacoes: "",
   });
 
-  const [itens, setItens] = useState<any[]>([]);
+  const [services, setServices] = useState<any[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
 
   const handleChange = (field: string, value: any) => {
     setFormData({ ...formData, [field]: value });
   };
 
-  const handleAddItem = () => {
-    setItens([
-      ...itens,
+  // SERVIÇOS
+  const handleAddService = () => {
+    setServices([
+      ...services,
       { id: Date.now(), descricao: "", quantidade: 1, unitario: 0, subtotal: 0 },
     ]);
   };
 
-  const handleItemChange = (index: number, field: string, value: any) => {
-    const newItens = [...itens];
-    newItens[index][field] = value;
+  const handleServiceChange = (index: number, field: string, value: any) => {
+    const newServices = [...services];
+    newServices[index][field] = value;
 
     if (field === "quantidade" || field === "unitario") {
-      newItens[index].subtotal = newItens[index].quantidade * newItens[index].unitario;
+      newServices[index].subtotal = newServices[index].quantidade * newServices[index].unitario;
     }
 
-    setItens(newItens);
+    setServices(newServices);
   };
 
-  const handleRemoveItem = (index: number) => {
-    setItens(itens.filter((_, i) => i !== index));
+  const handleRemoveService = (index: number) => {
+    setServices(services.filter((_, i) => i !== index));
+  };
+
+  // PRODUTOS
+  const handleAddProduct = () => {
+    setProducts([
+      ...products,
+      { id: Date.now(), descricao: "", quantidade: 1, unitario: 0, subtotal: 0 },
+    ]);
+  };
+
+  const handleProductChange = (index: number, field: string, value: any) => {
+    const newProducts = [...products];
+    newProducts[index][field] = value;
+
+    if (field === "quantidade" || field === "unitario") {
+      newProducts[index].subtotal = newProducts[index].quantidade * newProducts[index].unitario;
+    }
+
+    setProducts(newProducts);
+  };
+
+  const handleRemoveProduct = (index: number) => {
+    setProducts(products.filter((_, i) => i !== index));
   };
 
   const handleSalvar = () => {
@@ -64,15 +89,17 @@ export default function SalesForm() {
       toast.error("Por favor, preencha o vendedor");
       return;
     }
-    if (itens.length === 0) {
-      toast.error("Por favor, adicione pelo menos um item");
+    if (services.length === 0 && products.length === 0) {
+      toast.error("Por favor, adicione pelo menos um serviço ou produto");
       return;
     }
     toast.success("Venda salva com sucesso!");
     setTimeout(() => navigate("/sales"), 1500);
   };
 
-  const totalVenda = itens.reduce((acc, item) => acc + item.subtotal, 0);
+  const totalServices = services.reduce((acc, item) => acc + item.subtotal, 0);
+  const totalProducts = products.reduce((acc, item) => acc + item.subtotal, 0);
+  const totalVenda = totalServices + totalProducts;
   const comissao = (totalVenda * formData.percentualComissao) / 100;
 
   return (
@@ -153,32 +180,31 @@ export default function SalesForm() {
             </Card>
           </div>
 
-          {/* ITENS DE VENDA */}
-          <div>
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-bold text-[#00D9FF]">📦 Itens da Venda</h3>
-              <Button
-                onClick={handleAddItem}
-                size="sm"
-                className="bg-[#00D9FF] text-[#0f1419] hover:bg-[#00D9FF]/80"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Adicionar Item
-              </Button>
-            </div>
-
-            {itens.length > 0 ? (
+          {/* BLOCO DE SERVIÇOS */}
+          {services.length > 0 && (
+            <div>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-bold text-[#00D9FF]">🔧 Serviços</h3>
+                <Button
+                  onClick={handleAddService}
+                  size="sm"
+                  className="bg-[#00D9FF] text-[#0f1419] hover:bg-[#00D9FF]/80"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Adicionar Serviço
+                </Button>
+              </div>
               <Card className="p-6 bg-[#1a1f2e] border-[#00D9FF]/20">
                 <div className="space-y-4">
-                  {itens.map((item, index) => (
-                    <div key={item.id} className="p-4 bg-[#0f1419] rounded-lg border border-[#00D9FF]/20">
+                  {services.map((service, index) => (
+                    <div key={service.id} className="p-4 bg-[#0f1419] rounded-lg border border-[#00D9FF]/20">
                       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
                         <div className="md:col-span-2">
-                          <Label className="text-[#00D9FF] text-sm">Descrição</Label>
+                          <Label className="text-[#00D9FF] text-sm">Descrição do Serviço</Label>
                           <Input
-                            placeholder="Ex: Serviço de Manutenção"
-                            value={item.descricao}
-                            onChange={(e) => handleItemChange(index, "descricao", e.target.value)}
+                            placeholder="Ex: Manutenção de Notebook"
+                            value={service.descricao}
+                            onChange={(e) => handleServiceChange(index, "descricao", e.target.value)}
                             className="bg-[#1a1f2e] border-[#00D9FF]/30 text-white text-sm"
                           />
                         </div>
@@ -187,8 +213,8 @@ export default function SalesForm() {
                           <Input
                             type="number"
                             placeholder="1"
-                            value={item.quantidade}
-                            onChange={(e) => handleItemChange(index, "quantidade", parseFloat(e.target.value))}
+                            value={service.quantidade}
+                            onChange={(e) => handleServiceChange(index, "quantidade", parseFloat(e.target.value))}
                             className="bg-[#1a1f2e] border-[#00D9FF]/30 text-white text-sm"
                           />
                         </div>
@@ -197,18 +223,18 @@ export default function SalesForm() {
                           <Input
                             type="number"
                             placeholder="0.00"
-                            value={item.unitario}
-                            onChange={(e) => handleItemChange(index, "unitario", parseFloat(e.target.value))}
+                            value={service.unitario}
+                            onChange={(e) => handleServiceChange(index, "unitario", parseFloat(e.target.value))}
                             className="bg-[#1a1f2e] border-[#00D9FF]/30 text-white text-sm"
                           />
                         </div>
                       </div>
                       <div className="flex justify-between items-center">
                         <div className="text-[#00D9FF]">
-                          Subtotal: <span className="font-bold">R$ {item.subtotal.toFixed(2)}</span>
+                          Subtotal: <span className="font-bold">R$ {service.subtotal.toFixed(2)}</span>
                         </div>
                         <button
-                          onClick={() => handleRemoveItem(index)}
+                          onClick={() => handleRemoveService(index)}
                           className="p-2 hover:bg-red-500/10 rounded-lg transition text-red-400"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -218,32 +244,121 @@ export default function SalesForm() {
                   ))}
                 </div>
               </Card>
-            ) : (
-              <Button
-                onClick={handleAddItem}
-                className="w-full bg-[#00D9FF]/20 text-[#00D9FF] hover:bg-[#00D9FF]/30 border border-[#00D9FF]/50"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Adicionar Item
-              </Button>
-            )}
-          </div>
+            </div>
+          )}
+
+          {/* BOTÃO ADICIONAR SERVIÇO (aparece apenas se não há serviços) */}
+          {services.length === 0 && (
+            <Button
+              onClick={handleAddService}
+              className="w-full bg-[#00D9FF]/20 text-[#00D9FF] hover:bg-[#00D9FF]/30 border border-[#00D9FF]/50"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Adicionar Serviço
+            </Button>
+          )}
+
+          {/* BLOCO DE PRODUTOS */}
+          {products.length > 0 && (
+            <div>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-bold text-[#00D9FF]">📦 Produtos</h3>
+                <Button
+                  onClick={handleAddProduct}
+                  size="sm"
+                  className="bg-[#00D9FF] text-[#0f1419] hover:bg-[#00D9FF]/80"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Adicionar Produto
+                </Button>
+              </div>
+              <Card className="p-6 bg-[#1a1f2e] border-[#00D9FF]/20">
+                <div className="space-y-4">
+                  {products.map((product, index) => (
+                    <div key={product.id} className="p-4 bg-[#0f1419] rounded-lg border border-[#00D9FF]/20">
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                        <div className="md:col-span-2">
+                          <Label className="text-[#00D9FF] text-sm">Descrição do Produto</Label>
+                          <Input
+                            placeholder="Ex: HD SSD 240GB"
+                            value={product.descricao}
+                            onChange={(e) => handleProductChange(index, "descricao", e.target.value)}
+                            className="bg-[#1a1f2e] border-[#00D9FF]/30 text-white text-sm"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-[#00D9FF] text-sm">Quantidade</Label>
+                          <Input
+                            type="number"
+                            placeholder="1"
+                            value={product.quantidade}
+                            onChange={(e) => handleProductChange(index, "quantidade", parseFloat(e.target.value))}
+                            className="bg-[#1a1f2e] border-[#00D9FF]/30 text-white text-sm"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-[#00D9FF] text-sm">Valor Unit.</Label>
+                          <Input
+                            type="number"
+                            placeholder="0.00"
+                            value={product.unitario}
+                            onChange={(e) => handleProductChange(index, "unitario", parseFloat(e.target.value))}
+                            className="bg-[#1a1f2e] border-[#00D9FF]/30 text-white text-sm"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <div className="text-[#00D9FF]">
+                          Subtotal: <span className="font-bold">R$ {product.subtotal.toFixed(2)}</span>
+                        </div>
+                        <button
+                          onClick={() => handleRemoveProduct(index)}
+                          className="p-2 hover:bg-red-500/10 rounded-lg transition text-red-400"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </div>
+          )}
+
+          {/* BOTÃO ADICIONAR PRODUTO (aparece apenas se não há produtos) */}
+          {products.length === 0 && (
+            <Button
+              onClick={handleAddProduct}
+              className="w-full bg-[#00D9FF]/20 text-[#00D9FF] hover:bg-[#00D9FF]/30 border border-[#00D9FF]/50"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Adicionar Produto
+            </Button>
+          )}
 
           {/* TOTALIZAÇÕES */}
-          {itens.length > 0 && (
+          {(services.length > 0 || products.length > 0) && (
             <Card className="p-6 bg-[#1a1f2e] border-[#00D9FF]/20">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="p-4 bg-[#0f1419] rounded-lg">
-                  <div className="text-gray-400 text-sm mb-2">Total da Venda</div>
-                  <div className="text-2xl font-bold text-[#00D9FF]">R$ {totalVenda.toFixed(2)}</div>
-                </div>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {services.length > 0 && (
+                  <div className="p-4 bg-[#0f1419] rounded-lg">
+                    <div className="text-gray-400 text-sm mb-2">Total Serviços</div>
+                    <div className="text-2xl font-bold text-[#00D9FF]">R$ {totalServices.toFixed(2)}</div>
+                  </div>
+                )}
+                {products.length > 0 && (
+                  <div className="p-4 bg-[#0f1419] rounded-lg">
+                    <div className="text-gray-400 text-sm mb-2">Total Produtos</div>
+                    <div className="text-2xl font-bold text-[#00D9FF]">R$ {totalProducts.toFixed(2)}</div>
+                  </div>
+                )}
                 <div className="p-4 bg-[#0f1419] rounded-lg">
                   <div className="text-gray-400 text-sm mb-2">Comissão ({formData.percentualComissao}%)</div>
                   <div className="text-2xl font-bold text-green-400">R$ {comissao.toFixed(2)}</div>
                 </div>
                 <div className="p-4 bg-[#0f1419] rounded-lg border-2 border-[#00D9FF]/50">
-                  <div className="text-gray-400 text-sm mb-2">Líquido</div>
-                  <div className="text-2xl font-bold text-[#00D9FF]">R$ {(totalVenda - comissao).toFixed(2)}</div>
+                  <div className="text-gray-400 text-sm mb-2">Total Geral</div>
+                  <div className="text-2xl font-bold text-[#00D9FF]">R$ {totalVenda.toFixed(2)}</div>
                 </div>
               </div>
             </Card>
