@@ -1,31 +1,37 @@
+import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { FileText, Lock, Mail } from "lucide-react";
+import { FileText, Loader2 } from "lucide-react";
 import { useLocation } from "wouter";
-import { useState } from "react";
+import { useEffect } from "react";
+import { getLoginUrl } from "@/const";
 
 /**
- * Home - Página de Login
+ * Home - Página de Login com OAuth Manus
  * Design: Dark Tech Professional com foco na autenticação
  */
 export default function Home() {
   const [, navigate] = useLocation();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
+  const { user, loading: authLoading, isAuthenticated } = useAuth();
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
-    // Simular login - será substituído por chamada à API
-    setTimeout(() => {
-      setLoading(false);
+  // Se já está autenticado, redireciona para dashboard
+  useEffect(() => {
+    if (isAuthenticated && user) {
       navigate("/dashboard");
-    }, 1000);
-  };
+    }
+  }, [isAuthenticated, user, navigate]);
+
+  // Se está carregando, mostra spinner
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-accent mx-auto mb-4" />
+          <p className="text-muted-foreground">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -56,82 +62,27 @@ export default function Home() {
           </p>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleLogin} className="space-y-6">
-          {/* Email */}
-          <div>
-            <Label className="text-foreground mb-2 block text-sm font-medium">
-              E-mail
-            </Label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-3 w-5 h-5 text-muted-foreground" />
-              <Input
-                type="email"
-                placeholder="seu@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="pl-10"
-                required
-              />
-            </div>
-          </div>
-
-          {/* Password */}
-          <div>
-            <Label className="text-foreground mb-2 block text-sm font-medium">
-              Senha
-            </Label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-3 w-5 h-5 text-muted-foreground" />
-              <Input
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="pl-10"
-                required
-              />
-            </div>
-          </div>
-
-          {/* Remember me */}
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              className="w-4 h-4 rounded border-border bg-input cursor-pointer"
-            />
-            <span className="text-sm text-muted-foreground">Lembrar-me</span>
-          </label>
-
-          {/* Login Button */}
+        {/* OAuth Login Button */}
+        <div className="space-y-4">
           <Button
-            type="submit"
-            disabled={loading}
+            onClick={() => {
+              window.location.href = getLoginUrl();
+            }}
             className="btn-glow w-full py-2 font-semibold"
           >
-            {loading ? "Entrando..." : "Entrar"}
+            Entrar com Manus
           </Button>
-        </form>
 
-        {/* Divider */}
-        <div className="my-6 relative">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-border"></div>
-          </div>
-          <div className="relative flex justify-center text-sm">
-            <span className="px-2 bg-card text-muted-foreground">ou</span>
-          </div>
+          {/* Demo Access */}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => navigate("/dashboard")}
+            className="w-full"
+          >
+            Acessar Demo
+          </Button>
         </div>
-
-        {/* Demo Access */}
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => navigate("/dashboard")}
-          className="w-full"
-        >
-          Acessar Demo
-        </Button>
 
         {/* Footer */}
         <div className="mt-8 pt-6 border-t border-border text-center">

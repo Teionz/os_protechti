@@ -21,8 +21,8 @@ import QuotationForm from "./pages/QuotationForm";
 import SalesList from "./pages/SalesList";
 import SalesForm from "./pages/SalesForm";
 
-
 function Router() {
+  // make sure to consider if you need authentication for certain routes
   return (
     <Switch>
       <Route path={"/"} component={Home} />
