@@ -1,72 +1,61 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import Layout from "@/components/Layout";
-import { Eye, Edit, Trash2, Plus, Search } from "lucide-react";
+import { Eye, Edit, Trash2, Plus, Search, Loader2 } from "lucide-react";
 import { useLocation } from "wouter";
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
 
 /**
  * ClientList - Listagem de Clientes
  * Design: Dark Tech Professional com tabela responsiva
+ * Dados: Conectado ao tRPC e banco de dados MySQL
  */
 export default function ClientList() {
   const [, navigate] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Mock data - será substituído por chamadas à API
-  const clientes = [
-    {
-      id: 1,
-      nome: "SAULO PARAGUASSU",
-      cnpjCpf: "329.350.928-21",
-      email: "saulo.paraguassu@gmail.com",
-      telefone: "(17) 99776-7186",
-      cidade: "São José do Rio Preto",
-      estado: "SP",
-      ordens: 5,
-      totalGasto: 1500.0,
+  // Buscar clientes do banco de dados via tRPC
+  const { data: clientes = [], isLoading, error } = trpc.clients.list.useQuery();
+  const deleteClientMutation = trpc.clients.delete.useMutation({
+    onSuccess: () => {
+      toast.success("Cliente deletado com sucesso!");
+      // Recarregar lista
+      trpc.useUtils().clients.list.invalidate();
     },
-    {
-      id: 2,
-      nome: "EMPRESA XYZ LTDA",
-      cnpjCpf: "12.345.678/0001-90",
-      email: "contato@empresaxyz.com.br",
-      telefone: "(17) 3333-3333",
-      cidade: "São José do Rio Preto",
-      estado: "SP",
-      ordens: 8,
-      totalGasto: 3200.0,
+    onError: (error) => {
+      toast.error(`Erro ao deletar cliente: ${error.message}`);
     },
-    {
-      id: 3,
-      nome: "JOÃO SILVA",
-      cnpjCpf: "123.456.789-10",
-      email: "joao.silva@email.com",
-      telefone: "(17) 98888-8888",
-      cidade: "Mirassol",
-      estado: "SP",
-      ordens: 3,
-      totalGasto: 850.0,
-    },
-    {
-      id: 4,
-      nome: "MARIA SANTOS",
-      cnpjCpf: "987.654.321-00",
-      email: "maria.santos@email.com",
-      telefone: "(17) 99999-9999",
-      cidade: "São José do Rio Preto",
-      estado: "SP",
-      ordens: 2,
-      totalGasto: 600.0,
-    },
-  ];
+  });
 
-  const filtrados = clientes.filter(
-    (cliente) =>
-      cliente.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      cliente.cnpjCpf.includes(searchTerm) ||
-      cliente.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filtrar clientes por busca
+  const filtrados = useMemo(() => {
+    return clientes.filter(
+      (cliente) =>
+        cliente.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        cliente.cnpjCpf?.includes(searchTerm) ||
+        cliente.email?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [clientes, searchTerm]);
+
+  const handleDelete = (id: number, name: string) => {
+    if (confirm(`Deseja deletar o cliente ${name}?`)) {
+      deleteClientMutation.mutate(id);
+    }
+  };
+
+  if (error) {
+    return (
+      <Layout>
+        <div className="container py-8">
+          <div className="text-center text-destructive">
+            <p>Erro ao carregar clientes: {error.message}</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -104,7 +93,14 @@ export default function ClientList() {
 
         {/* Results Count */}
         <div className="mb-4 text-sm text-muted-foreground">
-          Mostrando {filtrados.length} de {clientes.length} clientes
+          {isLoading ? (
+            <span className="flex items-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Carregando clientes...
+            </span>
+          ) : (
+            `Mostrando ${filtrados.length} de ${clientes.length} clientes`
+          )}
         </div>
 
         {/* Table */}
@@ -129,104 +125,98 @@ export default function ClientList() {
                     Cidade
                   </th>
                   <th className="text-center py-4 px-6 text-sm font-semibold text-foreground">
-                    Ordens
-                  </th>
-                  <th className="text-right py-4 px-6 text-sm font-semibold text-foreground">
-                    Total Gasto
-                  </th>
-                  <th className="text-center py-4 px-6 text-sm font-semibold text-foreground">
                     Ações
                   </th>
                 </tr>
               </thead>
               <tbody>
-                {filtrados.map((cliente) => (
-                  <tr
-                    key={cliente.id}
-                    className="border-b border-border/50 hover:bg-accent/5 transition-colors"
-                  >
-                    <td className="py-4 px-6 text-foreground font-medium">
-                      {cliente.nome}
-                    </td>
-                    <td className="py-4 px-6 text-foreground text-sm">
-                      {cliente.cnpjCpf}
-                    </td>
-                    <td className="py-4 px-6 text-foreground text-sm">
-                      {cliente.email}
-                    </td>
-                    <td className="py-4 px-6 text-foreground text-sm">
-                      {cliente.telefone}
-                    </td>
-                    <td className="py-4 px-6 text-foreground text-sm">
-                      {cliente.cidade}
-                    </td>
-                    <td className="py-4 px-6 text-center text-foreground">
-                      <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-accent/20 text-accent font-semibold text-sm">
-                        {cliente.ordens}
-                      </span>
-                    </td>
-                    <td className="py-4 px-6 text-right text-accent font-semibold">
-                      R$ {cliente.totalGasto.toFixed(2)}
-                    </td>
-                    <td className="py-4 px-6 text-center">
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={6} className="py-8 text-center">
                       <div className="flex items-center justify-center gap-2">
-                        <Button
-                          onClick={() => navigate(`/clients/${cliente.id}`)}
-                          variant="ghost"
-                          size="sm"
-                          title="Visualizar"
-                          className="hover:bg-accent/20"
-                        >
-                          <Eye className="w-4 h-4 text-accent" />
-                        </Button>
-                        <Button
-                          onClick={() => navigate(`/clients/edit/${cliente.id}`)}
-                          variant="ghost"
-                          size="sm"
-                          title="Editar"
-                          className="hover:bg-accent/20"
-                        >
-                          <Edit className="w-4 h-4 text-blue-400" />
-                        </Button>
-                        <Button
-                          onClick={() => {
-                            if (
-                              confirm(
-                                `Deseja deletar o cliente ${cliente.nome}?`
-                              )
-                            ) {
-                              // Lógica de deleção aqui
-                            }
-                          }}
-                          variant="ghost"
-                          size="sm"
-                          title="Deletar"
-                          className="hover:bg-destructive/20"
-                        >
-                          <Trash2 className="w-4 h-4 text-destructive" />
-                        </Button>
+                        <Loader2 className="w-5 h-5 animate-spin text-accent" />
+                        <span className="text-muted-foreground">Carregando...</span>
                       </div>
                     </td>
                   </tr>
-                ))}
+                ) : filtrados.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-12 text-center">
+                      <p className="text-muted-foreground mb-4">
+                        Nenhum cliente encontrado
+                      </p>
+                      <Button
+                        onClick={() => navigate("/clients/new")}
+                        className="btn-glow gap-2"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Criar Primeiro Cliente
+                      </Button>
+                    </td>
+                  </tr>
+                ) : (
+                  filtrados.map((cliente) => (
+                    <tr
+                      key={cliente.id}
+                      className="border-b border-border/50 hover:bg-accent/5 transition-colors"
+                    >
+                      <td className="py-4 px-6 text-foreground font-medium">
+                        {cliente.name}
+                      </td>
+                      <td className="py-4 px-6 text-foreground text-sm">
+                        {cliente.cnpjCpf || "-"}
+                      </td>
+                      <td className="py-4 px-6 text-foreground text-sm">
+                        {cliente.email || "-"}
+                      </td>
+                      <td className="py-4 px-6 text-foreground text-sm">
+                        {cliente.phone || "-"}
+                      </td>
+                      <td className="py-4 px-6 text-foreground text-sm">
+                        {cliente.city || "-"}
+                      </td>
+                      <td className="py-4 px-6 text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <Button
+                            onClick={() => navigate(`/clients/${cliente.id}`)}
+                            variant="ghost"
+                            size="sm"
+                            title="Visualizar"
+                            className="hover:bg-accent/20"
+                          >
+                            <Eye className="w-4 h-4 text-accent" />
+                          </Button>
+                          <Button
+                            onClick={() => navigate(`/clients/edit/${cliente.id}`)}
+                            variant="ghost"
+                            size="sm"
+                            title="Editar"
+                            className="hover:bg-accent/20"
+                          >
+                            <Edit className="w-4 h-4 text-blue-400" />
+                          </Button>
+                          <Button
+                            onClick={() => handleDelete(cliente.id, cliente.name)}
+                            variant="ghost"
+                            size="sm"
+                            title="Deletar"
+                            disabled={deleteClientMutation.isPending}
+                            className="hover:bg-destructive/20"
+                          >
+                            {deleteClientMutation.isPending ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="w-4 h-4 text-destructive" />
+                            )}
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
-
-          {filtrados.length === 0 && (
-            <div className="py-12 text-center">
-              <p className="text-muted-foreground mb-4">
-                Nenhum cliente encontrado
-              </p>
-              <Button
-                onClick={() => navigate("/clients/new")}
-                className="btn-glow gap-2"
-              >
-                <Plus className="w-4 h-4" />
-                Criar Primeiro Cliente
-              </Button>
-            </div>
-          )}
         </Card>
       </div>
     </Layout>

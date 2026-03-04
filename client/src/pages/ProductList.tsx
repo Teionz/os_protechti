@@ -1,91 +1,69 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import Layout from "@/components/Layout";
-import { Eye, Edit, Trash2, Plus, Search } from "lucide-react";
+import { Eye, Edit, Trash2, Plus, Search, Loader2 } from "lucide-react";
 import { useLocation } from "wouter";
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
 
 /**
  * ProductList - Listagem de Produtos
  * Design: Dark Tech Professional com tabela responsiva
+ * Dados: Conectado ao tRPC e banco de dados MySQL
  */
 export default function ProductList() {
   const [, navigate] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Mock data - será substituído por chamadas à API
-  const produtos = [
-    {
-      id: 1,
-      nome: "TECLADO ACER A515",
-      categoria: "Periféricos",
-      unidade: "UN",
-      preco: 120.0,
-      estoque: 15,
-      fornecedor: "Fornecedor A",
-      sku: "TECLADO-ACER-A515",
+  // Buscar produtos do banco de dados via tRPC
+  const { data: produtos = [], isLoading, error } = trpc.products.list.useQuery();
+  const deleteProductMutation = trpc.products.delete.useMutation({
+    onSuccess: () => {
+      toast.success("Produto deletado com sucesso!");
+      trpc.useUtils().products.list.invalidate();
     },
-    {
-      id: 2,
-      nome: "HD SSD 240GB",
-      categoria: "Armazenamento",
-      unidade: "UN",
-      preco: 180.0,
-      estoque: 8,
-      fornecedor: "Fornecedor B",
-      sku: "SSD-240GB",
+    onError: (error) => {
+      toast.error(`Erro ao deletar produto: ${error.message}`);
     },
-    {
-      id: 3,
-      nome: "MEMÓRIA RAM 8GB DDR4",
-      categoria: "Memória",
-      unidade: "UN",
-      preco: 150.0,
-      estoque: 12,
-      fornecedor: "Fornecedor C",
-      sku: "RAM-8GB-DDR4",
-    },
-    {
-      id: 4,
-      nome: "BATERIA NOTEBOOK",
-      categoria: "Baterias",
-      unidade: "UN",
-      preco: 200.0,
-      estoque: 5,
-      fornecedor: "Fornecedor A",
-      sku: "BATERIA-NB",
-    },
-    {
-      id: 5,
-      nome: "CABO HDMI 2M",
-      categoria: "Cabos",
-      unidade: "UN",
-      preco: 35.0,
-      estoque: 30,
-      fornecedor: "Fornecedor D",
-      sku: "CABO-HDMI-2M",
-    },
-    {
-      id: 6,
-      nome: "PASTA TÉRMICA",
-      categoria: "Acessórios",
-      unidade: "TUBO",
-      preco: 25.0,
-      estoque: 20,
-      fornecedor: "Fornecedor B",
-      sku: "PASTA-TERMICA",
-    },
-  ];
+  });
 
-  const filtrados = produtos.filter(
-    (produto) =>
-      produto.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      produto.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      produto.categoria.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filtrar produtos por busca
+  const filtrados = useMemo(() => {
+    return produtos.filter(
+      (produto) =>
+        produto.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        produto.sku?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        produto.category?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [produtos, searchTerm]);
 
-  const estoqueTotal = produtos.reduce((acc, p) => acc + p.estoque, 0);
-  const valorEstoque = produtos.reduce((acc, p) => acc + p.preco * p.estoque, 0);
+  // Calcular estatísticas
+  const stats = useMemo(() => {
+    return {
+      total: produtos.length,
+      estoque: produtos.reduce((acc, p) => acc + (p.stock || 0), 0),
+      valor: produtos.reduce((acc, p) => acc + (Number(p.price) || 0) * (p.stock || 0), 0),
+    };
+  }, [produtos]);
+
+  const handleDelete = (id: number, name: string) => {
+    if (confirm(`Deseja deletar o produto ${name}?`)) {
+      deleteProductMutation.mutate(id);
+    }
+  };
+
+  if (error) {
+    return (
+      <Layout>
+        <div className="container py-8">
+          <div className="text-center text-destructive">
+            <p>Erro ao carregar produtos: {error.message}</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -118,7 +96,7 @@ export default function ProductList() {
                   Total de Produtos
                 </p>
                 <p className="text-3xl font-bold text-foreground">
-                  {produtos.length}
+                  {isLoading ? "-" : stats.total}
                 </p>
               </div>
               <div className="w-12 h-12 rounded-full bg-accent/20 flex items-center justify-center">
@@ -134,7 +112,7 @@ export default function ProductList() {
                   Itens em Estoque
                 </p>
                 <p className="text-3xl font-bold text-foreground">
-                  {estoqueTotal}
+                  {isLoading ? "-" : stats.estoque}
                 </p>
               </div>
               <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center">
@@ -150,7 +128,7 @@ export default function ProductList() {
                   Valor Total
                 </p>
                 <p className="text-3xl font-bold text-accent">
-                  R$ {valorEstoque.toFixed(2)}
+                  {isLoading ? "-" : `R$ ${stats.valor.toFixed(2)}`}
                 </p>
               </div>
               <div className="w-12 h-12 rounded-full bg-emerald-500/20 flex items-center justify-center">
@@ -176,7 +154,14 @@ export default function ProductList() {
 
         {/* Results Count */}
         <div className="mb-4 text-sm text-muted-foreground">
-          Mostrando {filtrados.length} de {produtos.length} produtos
+          {isLoading ? (
+            <span className="flex items-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Carregando produtos...
+            </span>
+          ) : (
+            `Mostrando ${filtrados.length} de ${stats.total} produtos`
+          )}
         </div>
 
         {/* Table */}
@@ -212,105 +197,113 @@ export default function ProductList() {
                 </tr>
               </thead>
               <tbody>
-                {filtrados.map((produto) => (
-                  <tr
-                    key={produto.id}
-                    className="border-b border-border/50 hover:bg-accent/5 transition-colors"
-                  >
-                    <td className="py-4 px-6 text-foreground font-medium">
-                      {produto.nome}
-                    </td>
-                    <td className="py-4 px-6 text-foreground text-sm font-mono">
-                      {produto.sku}
-                    </td>
-                    <td className="py-4 px-6 text-foreground text-sm">
-                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-accent/20 text-accent">
-                        {produto.categoria}
-                      </span>
-                    </td>
-                    <td className="py-4 px-6 text-center text-foreground">
-                      {produto.unidade}
-                    </td>
-                    <td className="py-4 px-6 text-right text-accent font-semibold">
-                      R$ {produto.preco.toFixed(2)}
-                    </td>
-                    <td className="py-4 px-6 text-center">
-                      <span
-                        className={`inline-flex items-center justify-center w-8 h-8 rounded-full font-semibold text-sm ${
-                          produto.estoque > 10
-                            ? "bg-emerald-500/20 text-emerald-400"
-                            : produto.estoque > 5
-                              ? "bg-yellow-500/20 text-yellow-400"
-                              : "bg-destructive/20 text-destructive"
-                        }`}
-                      >
-                        {produto.estoque}
-                      </span>
-                    </td>
-                    <td className="py-4 px-6 text-foreground text-sm">
-                      {produto.fornecedor}
-                    </td>
-                    <td className="py-4 px-6 text-center">
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={8} className="py-8 text-center">
                       <div className="flex items-center justify-center gap-2">
-                        <Button
-                          onClick={() => navigate(`/products/${produto.id}`)}
-                          variant="ghost"
-                          size="sm"
-                          title="Visualizar"
-                          className="hover:bg-accent/20"
-                        >
-                          <Eye className="w-4 h-4 text-accent" />
-                        </Button>
-                        <Button
-                          onClick={() =>
-                            navigate(`/products/edit/${produto.id}`)
-                          }
-                          variant="ghost"
-                          size="sm"
-                          title="Editar"
-                          className="hover:bg-accent/20"
-                        >
-                          <Edit className="w-4 h-4 text-blue-400" />
-                        </Button>
-                        <Button
-                          onClick={() => {
-                            if (
-                              confirm(
-                                `Deseja deletar o produto ${produto.nome}?`
-                              )
-                            ) {
-                              // Lógica de deleção aqui
-                            }
-                          }}
-                          variant="ghost"
-                          size="sm"
-                          title="Deletar"
-                          className="hover:bg-destructive/20"
-                        >
-                          <Trash2 className="w-4 h-4 text-destructive" />
-                        </Button>
+                        <Loader2 className="w-5 h-5 animate-spin text-accent" />
+                        <span className="text-muted-foreground">Carregando...</span>
                       </div>
                     </td>
                   </tr>
-                ))}
+                ) : filtrados.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="py-12 text-center">
+                      <p className="text-muted-foreground mb-4">
+                        Nenhum produto encontrado
+                      </p>
+                      <Button
+                        onClick={() => navigate("/products/new")}
+                        className="btn-glow gap-2"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Criar Primeiro Produto
+                      </Button>
+                    </td>
+                  </tr>
+                ) : (
+                  filtrados.map((produto) => (
+                    <tr
+                      key={produto.id}
+                      className="border-b border-border/50 hover:bg-accent/5 transition-colors"
+                    >
+                      <td className="py-4 px-6 text-foreground font-medium">
+                        {produto.name}
+                      </td>
+                      <td className="py-4 px-6 text-foreground text-sm font-mono">
+                        {produto.sku || "-"}
+                      </td>
+                      <td className="py-4 px-6 text-foreground text-sm">
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-accent/20 text-accent">
+                          {produto.category || "Sem categoria"}
+                        </span>
+                      </td>
+                      <td className="py-4 px-6 text-center text-foreground">
+                        {produto.unit || "-"}
+                      </td>
+                      <td className="py-4 px-6 text-right text-accent font-semibold">
+                        R$ {Number(produto.price).toFixed(2)}
+                      </td>
+                      <td className="py-4 px-6 text-center">
+                        <span
+                          className={`inline-flex items-center justify-center w-8 h-8 rounded-full font-semibold text-sm ${
+                            (produto.stock || 0) > 10
+                              ? "bg-emerald-500/20 text-emerald-400"
+                              : (produto.stock || 0) > 5
+                                ? "bg-yellow-500/20 text-yellow-400"
+                                : "bg-destructive/20 text-destructive"
+                          }`}
+                        >
+                          {produto.stock || 0}
+                        </span>
+                      </td>
+                      <td className="py-4 px-6 text-foreground text-sm">
+                        {produto.supplier || "-"}
+                      </td>
+                      <td className="py-4 px-6 text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <Button
+                            onClick={() => navigate(`/products/${produto.id}`)}
+                            variant="ghost"
+                            size="sm"
+                            title="Visualizar"
+                            className="hover:bg-accent/20"
+                          >
+                            <Eye className="w-4 h-4 text-accent" />
+                          </Button>
+                          <Button
+                            onClick={() =>
+                              navigate(`/products/edit/${produto.id}`)
+                            }
+                            variant="ghost"
+                            size="sm"
+                            title="Editar"
+                            className="hover:bg-accent/20"
+                          >
+                            <Edit className="w-4 h-4 text-blue-400" />
+                          </Button>
+                          <Button
+                            onClick={() => handleDelete(produto.id, produto.name)}
+                            variant="ghost"
+                            size="sm"
+                            title="Deletar"
+                            disabled={deleteProductMutation.isPending}
+                            className="hover:bg-destructive/20"
+                          >
+                            {deleteProductMutation.isPending ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="w-4 h-4 text-destructive" />
+                            )}
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
-
-          {filtrados.length === 0 && (
-            <div className="py-12 text-center">
-              <p className="text-muted-foreground mb-4">
-                Nenhum produto encontrado
-              </p>
-              <Button
-                onClick={() => navigate("/products/new")}
-                className="btn-glow gap-2"
-              >
-                <Plus className="w-4 h-4" />
-                Criar Primeiro Produto
-              </Button>
-            </div>
-          )}
         </Card>
       </div>
     </Layout>
