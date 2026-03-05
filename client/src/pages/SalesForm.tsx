@@ -1,400 +1,504 @@
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import Layout from "@/components/Layout";
-import { Save, Plus, Trash2 } from "lucide-react";
 import { useLocation } from "wouter";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { Loader2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { trpc } from "@/lib/trpc";
 
 /**
  * SalesForm - Formulário de cadastro/edição de Venda
- * Design: Dark Tech Professional
- * Funcionalidades: Dados gerais, blocos separados de Serviços e Produtos
+ * Design: Dark Tech Professional com integração tRPC
+ * Blocos separados: Serviços e Produtos (aparecem apenas quando adicionados)
  */
 export default function SalesForm() {
   const [, navigate] = useLocation();
+  const [loading, setLoading] = useState(false);
+
+  // Buscar dados do banco
+  const { data: clients = [] } = trpc.clients.list.useQuery();
+  const { data: products = [] } = trpc.products.list.useQuery();
+  const { data: services = [] } = trpc.services.list.useQuery();
+
   const [formData, setFormData] = useState({
-    numero: "VND-006",
-    cliente: "",
-    data: new Date().toISOString().split("T")[0],
-    vendedor: "",
-    status: "FINALIZADA",
-    percentualComissao: 10,
-    observacoes: "",
+    clientId: "",
+    saleDate: new Date().toISOString().split("T")[0],
+    seller: "",
+    status: "completed",
+    commissionPercentage: "10",
+    notes: "",
   });
 
-  const [services, setServices] = useState<any[]>([]);
-  const [products, setProducts] = useState<any[]>([]);
+  const [saleServices, setSaleServices] = useState<any[]>([]);
+  const [saleProducts, setSaleProducts] = useState<any[]>([]);
 
-  const handleChange = (field: string, value: any) => {
-    setFormData({ ...formData, [field]: value });
+  // Mutation para criar venda
+  const createSaleMutation = trpc.sales.create.useMutation({
+    onSuccess: () => {
+      toast.success("Venda salva com sucesso!");
+      navigate("/sales");
+    },
+    onError: (error) => {
+      toast.error(`Erro ao salvar venda: ${error.message}`);
+    },
+  });
+
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
   // SERVIÇOS
   const handleAddService = () => {
-    setServices([
-      ...services,
-      { id: Date.now(), descricao: "", quantidade: 1, unitario: 0, subtotal: 0 },
+    setSaleServices([
+      ...saleServices,
+      { id: Date.now(), serviceId: "", quantity: 1, unitPrice: 0, subtotal: 0 },
     ]);
   };
 
   const handleServiceChange = (index: number, field: string, value: any) => {
-    const newServices = [...services];
+    const newServices = [...saleServices];
     newServices[index][field] = value;
 
-    if (field === "quantidade" || field === "unitario") {
-      newServices[index].subtotal = newServices[index].quantidade * newServices[index].unitario;
+    // Se selecionou um serviço, preencher o preço
+    if (field === "serviceId" && value) {
+      const selectedService = services.find((s: any) => s.id === Number(value));
+      if (selectedService) {
+        newServices[index].unitPrice = selectedService.price;
+      }
     }
 
-    setServices(newServices);
+    if (field === "quantity" || field === "unitPrice") {
+      newServices[index].subtotal = newServices[index].quantity * newServices[index].unitPrice;
+    }
+
+    setSaleServices(newServices);
   };
 
   const handleRemoveService = (index: number) => {
-    setServices(services.filter((_, i) => i !== index));
+    setSaleServices(saleServices.filter((_, i) => i !== index));
   };
 
   // PRODUTOS
   const handleAddProduct = () => {
-    setProducts([
-      ...products,
-      { id: Date.now(), descricao: "", quantidade: 1, unitario: 0, subtotal: 0 },
+    setSaleProducts([
+      ...saleProducts,
+      { id: Date.now(), productId: "", quantity: 1, unitPrice: 0, subtotal: 0 },
     ]);
   };
 
   const handleProductChange = (index: number, field: string, value: any) => {
-    const newProducts = [...products];
+    const newProducts = [...saleProducts];
     newProducts[index][field] = value;
 
-    if (field === "quantidade" || field === "unitario") {
-      newProducts[index].subtotal = newProducts[index].quantidade * newProducts[index].unitario;
+    // Se selecionou um produto, preencher o preço
+    if (field === "productId" && value) {
+      const selectedProduct = products.find((p: any) => p.id === Number(value));
+      if (selectedProduct) {
+        newProducts[index].unitPrice = selectedProduct.price;
+      }
     }
 
-    setProducts(newProducts);
+    if (field === "quantity" || field === "unitPrice") {
+      newProducts[index].subtotal = newProducts[index].quantity * newProducts[index].unitPrice;
+    }
+
+    setSaleProducts(newProducts);
   };
 
   const handleRemoveProduct = (index: number) => {
-    setProducts(products.filter((_, i) => i !== index));
+    setSaleProducts(saleProducts.filter((_, i) => i !== index));
   };
 
-  const handleSalvar = () => {
-    if (!formData.cliente) {
-      toast.error("Por favor, preencha o cliente");
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!formData.clientId) {
+      toast.error("Por favor, selecione um cliente");
       return;
     }
-    if (!formData.vendedor) {
+
+    if (!formData.seller) {
       toast.error("Por favor, preencha o vendedor");
       return;
     }
-    if (services.length === 0 && products.length === 0) {
+
+    if (saleServices.length === 0 && saleProducts.length === 0) {
       toast.error("Por favor, adicione pelo menos um serviço ou produto");
       return;
     }
-    toast.success("Venda salva com sucesso!");
-    setTimeout(() => navigate("/sales"), 1500);
+
+    setLoading(true);
+
+    try {
+      const subtotal = totalServices + totalProducts;
+      const commission = (subtotal * Number(formData.commissionPercentage)) / 100;
+
+      await createSaleMutation.mutateAsync({
+        saleNumber: `VND-${Date.now()}`,
+        clientId: Number(formData.clientId),
+        status: formData.status as "pending" | "completed" | "cancelled",
+        seller: formData.seller,
+        commission: commission.toString(),
+        subtotal: subtotal.toString(),
+        total: subtotal.toString(),
+        notes: formData.notes,
+        services: saleServices.map((s) => ({
+          serviceId: Number(s.serviceId),
+          quantity: s.quantity,
+          unitPrice: s.unitPrice,
+        })),
+        products: saleProducts.map((p) => ({
+          productId: Number(p.productId),
+          quantity: p.quantity,
+          unitPrice: p.unitPrice,
+        })),
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const totalServices = services.reduce((acc, item) => acc + item.subtotal, 0);
-  const totalProducts = products.reduce((acc, item) => acc + item.subtotal, 0);
-  const totalVenda = totalServices + totalProducts;
-  const comissao = (totalVenda * formData.percentualComissao) / 100;
+  const totalServices = saleServices.reduce((acc, item) => acc + item.subtotal, 0);
+  const totalProducts = saleProducts.reduce((acc, item) => acc + item.subtotal, 0);
+  const subtotal = totalServices + totalProducts;
+  const commission = (subtotal * Number(formData.commissionPercentage)) / 100;
+  const grandTotal = subtotal;
 
   return (
     <Layout>
-      <div className="container py-8">
+      <div className="container py-8 max-w-5xl">
+        {/* Page Title */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-[#00D9FF] mb-2">Nova Venda</h1>
-          <p className="text-gray-400">Preencha os dados abaixo para registrar uma nova venda</p>
+          <h1 className="text-3xl font-bold text-foreground mb-2">Nova Venda</h1>
+          <p className="text-muted-foreground">
+            Preencha os dados abaixo para registrar uma nova venda
+          </p>
         </div>
 
-        <div className="space-y-6">
-          {/* INFORMAÇÕES GERAIS */}
-          <div>
-            <h3 className="text-lg font-bold text-[#00D9FF] mb-4">📋 Informações Gerais</h3>
-            <Card className="p-6 bg-[#1a1f2e] border-[#00D9FF]/20">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-[#00D9FF]">Número da Venda</Label>
-                  <Input
-                    placeholder="VND-001"
-                    value={formData.numero}
-                    onChange={(e) => handleChange("numero", e.target.value)}
-                    className="bg-[#0f1419] border-[#00D9FF]/30 text-white"
-                    disabled
-                  />
-                </div>
-                <div>
-                  <Label className="text-[#00D9FF]">Cliente *</Label>
-                  <Input
-                    placeholder="Nome do cliente"
-                    value={formData.cliente}
-                    onChange={(e) => handleChange("cliente", e.target.value)}
-                    className="bg-[#0f1419] border-[#00D9FF]/30 text-white"
-                  />
-                </div>
-                <div>
-                  <Label className="text-[#00D9FF]">Data da Venda</Label>
-                  <Input
-                    type="date"
-                    value={formData.data}
-                    onChange={(e) => handleChange("data", e.target.value)}
-                    className="bg-[#0f1419] border-[#00D9FF]/30 text-white"
-                  />
-                </div>
-                <div>
-                  <Label className="text-[#00D9FF]">Vendedor *</Label>
-                  <Input
-                    placeholder="Nome do vendedor"
-                    value={formData.vendedor}
-                    onChange={(e) => handleChange("vendedor", e.target.value)}
-                    className="bg-[#0f1419] border-[#00D9FF]/30 text-white"
-                  />
-                </div>
-                <div>
-                  <Label className="text-[#00D9FF]">Status</Label>
-                  <Select value={formData.status} onValueChange={(v) => handleChange("status", v)}>
-                    <SelectTrigger className="bg-[#0f1419] border-[#00D9FF]/30 text-white">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-[#1a1f2e] border-[#00D9FF]/30">
-                      <SelectItem value="FINALIZADA">Finalizada</SelectItem>
-                      <SelectItem value="PENDENTE">Pendente</SelectItem>
-                      <SelectItem value="CANCELADA">Cancelada</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label className="text-[#00D9FF]">Percentual de Comissão (%)</Label>
-                  <Input
-                    type="number"
-                    placeholder="10"
-                    value={formData.percentualComissao}
-                    onChange={(e) => handleChange("percentualComissao", parseFloat(e.target.value))}
-                    className="bg-[#0f1419] border-[#00D9FF]/30 text-white"
-                  />
-                </div>
-              </div>
-            </Card>
-          </div>
-
-          {/* BLOCO DE SERVIÇOS */}
-          {services.length > 0 && (
-            <div>
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-bold text-[#00D9FF]">🔧 Serviços</h3>
-                <Button
-                  onClick={handleAddService}
-                  size="sm"
-                  className="bg-[#00D9FF] text-[#0f1419] hover:bg-[#00D9FF]/80"
+        <form onSubmit={handleSubmit}>
+          {/* Informações Gerais */}
+          <Card className="card-float p-8 mb-6">
+            <h2 className="text-2xl font-bold text-foreground mb-6">Informações Gerais</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-semibold text-foreground mb-2">
+                  Cliente *
+                </label>
+                <select
+                  name="clientId"
+                  value={formData.clientId}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+                  required
                 >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Adicionar Serviço
-                </Button>
+                  <option value="">Selecione um cliente</option>
+                  {clients.map((client: any) => (
+                    <option key={client.id} value={client.id}>
+                      {client.name}
+                    </option>
+                  ))}
+                </select>
               </div>
-              <Card className="p-6 bg-[#1a1f2e] border-[#00D9FF]/20">
-                <div className="space-y-4">
-                  {services.map((service, index) => (
-                    <div key={service.id} className="p-4 bg-[#0f1419] rounded-lg border border-[#00D9FF]/20">
-                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-                        <div className="md:col-span-2">
-                          <Label className="text-[#00D9FF] text-sm">Descrição do Serviço</Label>
-                          <Input
-                            placeholder="Ex: Manutenção de Notebook"
-                            value={service.descricao}
-                            onChange={(e) => handleServiceChange(index, "descricao", e.target.value)}
-                            className="bg-[#1a1f2e] border-[#00D9FF]/30 text-white text-sm"
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-[#00D9FF] text-sm">Quantidade</Label>
-                          <Input
-                            type="number"
-                            placeholder="1"
-                            value={service.quantidade}
-                            onChange={(e) => handleServiceChange(index, "quantidade", parseFloat(e.target.value))}
-                            className="bg-[#1a1f2e] border-[#00D9FF]/30 text-white text-sm"
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-[#00D9FF] text-sm">Valor Unit.</Label>
-                          <Input
-                            type="number"
-                            placeholder="0.00"
-                            value={service.unitario}
-                            onChange={(e) => handleServiceChange(index, "unitario", parseFloat(e.target.value))}
-                            className="bg-[#1a1f2e] border-[#00D9FF]/30 text-white text-sm"
-                          />
-                        </div>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <div className="text-[#00D9FF]">
-                          Subtotal: <span className="font-bold">R$ {service.subtotal.toFixed(2)}</span>
-                        </div>
-                        <button
-                          onClick={() => handleRemoveService(index)}
-                          className="p-2 hover:bg-red-500/10 rounded-lg transition text-red-400"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+              <div>
+                <label className="block text-sm font-semibold text-foreground mb-2">
+                  Data da Venda
+                </label>
+                <input
+                  type="date"
+                  name="saleDate"
+                  value={formData.saleDate}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-foreground mb-2">
+                  Vendedor *
+                </label>
+                <input
+                  type="text"
+                  name="seller"
+                  value={formData.seller}
+                  onChange={handleChange}
+                  placeholder="Nome do vendedor"
+                  className="w-full px-4 py-3 bg-background border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-foreground mb-2">Status</label>
+                <select
+                  name="status"
+                  value={formData.status}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+                >
+                  <option value="pending">Pendente</option>
+                  <option value="completed">Concluída</option>
+                  <option value="cancelled">Cancelada</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-foreground mb-2">
+                  Comissão (%)
+                </label>
+                <input
+                  type="number"
+                  name="commissionPercentage"
+                  value={formData.commissionPercentage}
+                  onChange={handleChange}
+                  step="0.1"
+                  className="w-full px-4 py-3 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-semibold text-foreground mb-2">
+                  Observações
+                </label>
+                <textarea
+                  name="notes"
+                  value={formData.notes}
+                  onChange={handleChange}
+                  placeholder="Observações gerais sobre a venda"
+                  rows={3}
+                  className="w-full px-4 py-3 bg-background border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+                />
+              </div>
+            </div>
+          </Card>
+
+          {/* SERVIÇOS */}
+          {saleServices.length > 0 && (
+            <Card className="card-float p-8 mb-6">
+              <h2 className="text-2xl font-bold text-foreground mb-6">🔧 Serviços</h2>
+              <div className="space-y-4">
+                {saleServices.map((service, index) => (
+                  <div key={service.id} className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+                    <div>
+                      <label className="block text-sm font-semibold text-foreground mb-2">
+                        Serviço
+                      </label>
+                      <select
+                        value={service.serviceId}
+                        onChange={(e) => handleServiceChange(index, "serviceId", e.target.value)}
+                        className="w-full px-4 py-3 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+                      >
+                        <option value="">Selecione</option>
+                        {services.map((svc: any) => (
+                          <option key={svc.id} value={svc.id}>
+                            {svc.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-foreground mb-2">
+                        Quantidade
+                      </label>
+                      <input
+                        type="number"
+                        value={service.quantity}
+                        onChange={(e) =>
+                          handleServiceChange(index, "quantity", Number(e.target.value))
+                        }
+                        min="1"
+                        className="w-full px-4 py-3 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-foreground mb-2">
+                        Valor Unit.
+                      </label>
+                      <input
+                        type="number"
+                        value={service.unitPrice}
+                        onChange={(e) =>
+                          handleServiceChange(index, "unitPrice", Number(e.target.value))
+                        }
+                        step="0.01"
+                        className="w-full px-4 py-3 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-foreground mb-2">
+                        Subtotal
+                      </label>
+                      <div className="px-4 py-3 bg-background border border-border rounded-lg text-foreground">
+                        R$ {service.subtotal.toFixed(2)}
                       </div>
                     </div>
-                  ))}
-                </div>
-              </Card>
-            </div>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveService(index)}
+                      className="px-4 py-3 bg-destructive/20 text-destructive rounded-lg hover:bg-destructive/30 transition-colors"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </Card>
           )}
 
-          {/* BOTÃO ADICIONAR SERVIÇO (aparece apenas se não há serviços) */}
-          {services.length === 0 && (
+          {/* PRODUTOS */}
+          {saleProducts.length > 0 && (
+            <Card className="card-float p-8 mb-6">
+              <h2 className="text-2xl font-bold text-foreground mb-6">📦 Produtos</h2>
+              <div className="space-y-4">
+                {saleProducts.map((product, index) => (
+                  <div key={product.id} className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+                    <div>
+                      <label className="block text-sm font-semibold text-foreground mb-2">
+                        Produto
+                      </label>
+                      <select
+                        value={product.productId}
+                        onChange={(e) => handleProductChange(index, "productId", e.target.value)}
+                        className="w-full px-4 py-3 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+                      >
+                        <option value="">Selecione</option>
+                        {products.map((prod: any) => (
+                          <option key={prod.id} value={prod.id}>
+                            {prod.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-foreground mb-2">
+                        Quantidade
+                      </label>
+                      <input
+                        type="number"
+                        value={product.quantity}
+                        onChange={(e) =>
+                          handleProductChange(index, "quantity", Number(e.target.value))
+                        }
+                        min="1"
+                        className="w-full px-4 py-3 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-foreground mb-2">
+                        Valor Unit.
+                      </label>
+                      <input
+                        type="number"
+                        value={product.unitPrice}
+                        onChange={(e) =>
+                          handleProductChange(index, "unitPrice", Number(e.target.value))
+                        }
+                        step="0.01"
+                        className="w-full px-4 py-3 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-foreground mb-2">
+                        Subtotal
+                      </label>
+                      <div className="px-4 py-3 bg-background border border-border rounded-lg text-foreground">
+                        R$ {product.subtotal.toFixed(2)}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveProduct(index)}
+                      className="px-4 py-3 bg-destructive/20 text-destructive rounded-lg hover:bg-destructive/30 transition-colors"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {/* Botões para adicionar */}
+          <div className="flex gap-4 mb-6">
             <Button
+              type="button"
               onClick={handleAddService}
-              className="w-full bg-[#00D9FF]/20 text-[#00D9FF] hover:bg-[#00D9FF]/30 border border-[#00D9FF]/50"
+              variant="outline"
+              className="flex-1"
             >
               <Plus className="w-4 h-4 mr-2" />
               Adicionar Serviço
             </Button>
-          )}
-
-          {/* BLOCO DE PRODUTOS */}
-          {products.length > 0 && (
-            <div>
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-bold text-[#00D9FF]">📦 Produtos</h3>
-                <Button
-                  onClick={handleAddProduct}
-                  size="sm"
-                  className="bg-[#00D9FF] text-[#0f1419] hover:bg-[#00D9FF]/80"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Adicionar Produto
-                </Button>
-              </div>
-              <Card className="p-6 bg-[#1a1f2e] border-[#00D9FF]/20">
-                <div className="space-y-4">
-                  {products.map((product, index) => (
-                    <div key={product.id} className="p-4 bg-[#0f1419] rounded-lg border border-[#00D9FF]/20">
-                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-                        <div className="md:col-span-2">
-                          <Label className="text-[#00D9FF] text-sm">Descrição do Produto</Label>
-                          <Input
-                            placeholder="Ex: HD SSD 240GB"
-                            value={product.descricao}
-                            onChange={(e) => handleProductChange(index, "descricao", e.target.value)}
-                            className="bg-[#1a1f2e] border-[#00D9FF]/30 text-white text-sm"
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-[#00D9FF] text-sm">Quantidade</Label>
-                          <Input
-                            type="number"
-                            placeholder="1"
-                            value={product.quantidade}
-                            onChange={(e) => handleProductChange(index, "quantidade", parseFloat(e.target.value))}
-                            className="bg-[#1a1f2e] border-[#00D9FF]/30 text-white text-sm"
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-[#00D9FF] text-sm">Valor Unit.</Label>
-                          <Input
-                            type="number"
-                            placeholder="0.00"
-                            value={product.unitario}
-                            onChange={(e) => handleProductChange(index, "unitario", parseFloat(e.target.value))}
-                            className="bg-[#1a1f2e] border-[#00D9FF]/30 text-white text-sm"
-                          />
-                        </div>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <div className="text-[#00D9FF]">
-                          Subtotal: <span className="font-bold">R$ {product.subtotal.toFixed(2)}</span>
-                        </div>
-                        <button
-                          onClick={() => handleRemoveProduct(index)}
-                          className="p-2 hover:bg-red-500/10 rounded-lg transition text-red-400"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </Card>
-            </div>
-          )}
-
-          {/* BOTÃO ADICIONAR PRODUTO (aparece apenas se não há produtos) */}
-          {products.length === 0 && (
             <Button
+              type="button"
               onClick={handleAddProduct}
-              className="w-full bg-[#00D9FF]/20 text-[#00D9FF] hover:bg-[#00D9FF]/30 border border-[#00D9FF]/50"
+              variant="outline"
+              className="flex-1"
             >
               <Plus className="w-4 h-4 mr-2" />
               Adicionar Produto
             </Button>
-          )}
-
-          {/* TOTALIZAÇÕES */}
-          {(services.length > 0 || products.length > 0) && (
-            <Card className="p-6 bg-[#1a1f2e] border-[#00D9FF]/20">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                {services.length > 0 && (
-                  <div className="p-4 bg-[#0f1419] rounded-lg">
-                    <div className="text-gray-400 text-sm mb-2">Total Serviços</div>
-                    <div className="text-2xl font-bold text-[#00D9FF]">R$ {totalServices.toFixed(2)}</div>
-                  </div>
-                )}
-                {products.length > 0 && (
-                  <div className="p-4 bg-[#0f1419] rounded-lg">
-                    <div className="text-gray-400 text-sm mb-2">Total Produtos</div>
-                    <div className="text-2xl font-bold text-[#00D9FF]">R$ {totalProducts.toFixed(2)}</div>
-                  </div>
-                )}
-                <div className="p-4 bg-[#0f1419] rounded-lg">
-                  <div className="text-gray-400 text-sm mb-2">Comissão ({formData.percentualComissao}%)</div>
-                  <div className="text-2xl font-bold text-green-400">R$ {comissao.toFixed(2)}</div>
-                </div>
-                <div className="p-4 bg-[#0f1419] rounded-lg border-2 border-[#00D9FF]/50">
-                  <div className="text-gray-400 text-sm mb-2">Total Geral</div>
-                  <div className="text-2xl font-bold text-[#00D9FF]">R$ {totalVenda.toFixed(2)}</div>
-                </div>
-              </div>
-            </Card>
-          )}
-
-          {/* OBSERVAÇÕES */}
-          <div>
-            <h3 className="text-lg font-bold text-[#00D9FF] mb-4">📝 Observações</h3>
-            <Card className="p-6 bg-[#1a1f2e] border-[#00D9FF]/20">
-              <Textarea
-                placeholder="Observações sobre a venda"
-                value={formData.observacoes}
-                onChange={(e) => handleChange("observacoes", e.target.value)}
-                className="bg-[#0f1419] border-[#00D9FF]/30 text-white min-h-[100px]"
-              />
-            </Card>
           </div>
 
-          {/* BOTÕES DE AÇÃO */}
-          <div className="flex gap-4 justify-end">
+          {/* Totalizações */}
+          <Card className="card-float p-8 mb-6 bg-accent/5 border-accent/20">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div>
+                <p className="text-muted-foreground text-sm">Total Serviços</p>
+                <p className="text-xl font-bold text-foreground">
+                  R$ {totalServices.toFixed(2)}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-sm">Total Produtos</p>
+                <p className="text-xl font-bold text-foreground">
+                  R$ {totalProducts.toFixed(2)}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-sm">Comissão</p>
+                <p className="text-xl font-bold text-foreground">
+                  R$ {commission.toFixed(2)}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-sm">Total Geral</p>
+                <p className="text-2xl font-bold text-accent">
+                  R$ {grandTotal.toFixed(2)}
+                </p>
+              </div>
+            </div>
+          </Card>
+
+          {/* Action Buttons */}
+          <div className="flex gap-4">
             <Button
+              type="button"
               onClick={() => navigate("/sales")}
               variant="outline"
-              className="border-[#00D9FF]/30 text-[#00D9FF] hover:bg-[#00D9FF]/10"
+              className="flex-1"
+              disabled={loading}
             >
               Cancelar
             </Button>
             <Button
-              onClick={handleSalvar}
-              className="bg-[#00D9FF] text-[#0f1419] hover:bg-[#00D9FF]/80"
+              type="submit"
+              className="btn-glow flex-1"
+              disabled={loading || createSaleMutation.isPending}
             >
-              <Save className="w-4 h-4 mr-2" />
-              Salvar Venda
+              {loading || createSaleMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                "Salvar Venda"
+              )}
             </Button>
           </div>
-        </div>
+        </form>
       </div>
     </Layout>
   );

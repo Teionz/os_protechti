@@ -207,6 +207,16 @@ export const appRouter = router({
         discount: z.string().optional(),
         total: z.string().optional(),
         notes: z.string().optional(),
+        services: z.array(z.object({
+          serviceId: z.number(),
+          quantity: z.number(),
+          unitPrice: z.number(),
+        })).optional(),
+        products: z.array(z.object({
+          productId: z.number(),
+          quantity: z.number(),
+          unitPrice: z.number(),
+        })).optional(),
       }))
       .mutation(({ input }) => db.createQuotation(input)),
     update: publicProcedure
@@ -238,6 +248,16 @@ export const appRouter = router({
         seller: z.string().optional(),
         commission: z.string().optional(),
         subtotal: z.string().optional(),
+        services: z.array(z.object({
+          serviceId: z.number(),
+          quantity: z.number(),
+          unitPrice: z.number(),
+        })).optional(),
+        products: z.array(z.object({
+          productId: z.number(),
+          quantity: z.number(),
+          unitPrice: z.number(),
+        })).optional(),
         commissionAmount: z.string().optional(),
         total: z.string().optional(),
         notes: z.string().optional(),
