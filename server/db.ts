@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, clients, InsertClient, products, InsertProduct, services, InsertService, orders, InsertOrder, quotations, InsertQuotation, sales, InsertSale } from "../drizzle/schema";
+import { InsertUser, users, clients, InsertClient, products, InsertProduct, services, InsertService, orders, InsertOrder, quotations, InsertQuotation, sales, InsertSale, suppliers, InsertSupplier } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -280,4 +280,36 @@ export async function deleteSale(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   return db.delete(sales).where(eq(sales.id, id));
+}
+
+// Fornecedores
+export async function getSuppliers() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(suppliers);
+}
+
+export async function getSupplierById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(suppliers).where(eq(suppliers.id, id)).limit(1);
+  return result[0];
+}
+
+export async function createSupplier(data: InsertSupplier) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.insert(suppliers).values(data);
+}
+
+export async function updateSupplier(id: number, data: Partial<InsertSupplier>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.update(suppliers).set(data).where(eq(suppliers.id, id));
+}
+
+export async function deleteSupplier(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.delete(suppliers).where(eq(suppliers.id, id));
 }

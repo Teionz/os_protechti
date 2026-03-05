@@ -261,6 +261,50 @@ export const appRouter = router({
       .mutation(({ input }) => db.updateSale(input.id, input.data)),
     delete: publicProcedure.input(z.number()).mutation(({ input }) => db.deleteSale(input)),
   }),
+
+  // Fornecedores
+  suppliers: router({
+    list: publicProcedure.query(() => db.getSuppliers()),
+    get: publicProcedure.input(z.number()).query(({ input }) => db.getSupplierById(input)),
+    create: publicProcedure
+      .input(z.object({
+        name: z.string(),
+        cnpjCpf: z.string().optional(),
+        email: z.string().optional(),
+        phone: z.string().optional(),
+        street: z.string().optional(),
+        number: z.string().optional(),
+        complement: z.string().optional(),
+        neighborhood: z.string().optional(),
+        city: z.string().optional(),
+        state: z.string().optional(),
+        zipCode: z.string().optional(),
+        contact: z.string().optional(),
+        notes: z.string().optional(),
+      }))
+      .mutation(({ input }) => db.createSupplier(input)),
+    update: publicProcedure
+      .input(z.object({
+        id: z.number(),
+        data: z.object({
+          name: z.string().optional(),
+          cnpjCpf: z.string().optional(),
+          email: z.string().optional(),
+          phone: z.string().optional(),
+          street: z.string().optional(),
+          number: z.string().optional(),
+          complement: z.string().optional(),
+          neighborhood: z.string().optional(),
+          city: z.string().optional(),
+          state: z.string().optional(),
+          zipCode: z.string().optional(),
+          contact: z.string().optional(),
+          notes: z.string().optional(),
+        }),
+      }))
+      .mutation(({ input }) => db.updateSupplier(input.id, input.data)),
+    delete: publicProcedure.input(z.number()).mutation(({ input }) => db.deleteSupplier(input)),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

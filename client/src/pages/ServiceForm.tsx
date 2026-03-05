@@ -1,170 +1,304 @@
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import Layout from "@/components/Layout";
-import { Save } from "lucide-react";
 import { useLocation } from "wouter";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { trpc } from "@/lib/trpc";
 
 /**
  * ServiceForm - Formulário de cadastro/edição de Serviço
- * Design: Dark Tech Professional
+ * Design: Dark Tech Professional com integração tRPC
  */
 export default function ServiceForm() {
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
+  const [loading, setLoading] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [serviceId, setServiceId] = useState<number | null>(null);
+  
   const [formData, setFormData] = useState({
-    nome: "",
-    categoria: "MANUTENCAO",
-    descricao: "",
-    preco: 0,
-    tempoEstimado: "1 hora",
-    ativo: true,
-    observacoes: "",
+    name: "",
+    category: "MANUTENCAO",
+    description: "",
+    price: "",
+    estimatedTime: "1 hora",
+    status: "active",
+    notes: "",
   });
 
-  const handleChange = (field: string, value: any) => {
-    setFormData({ ...formData, [field]: value });
+  // Extrair ID da URL (ex: /services/edit/1)
+  useEffect(() => {
+    const pathParts = location.split("/");
+    const id = pathParts[pathParts.length - 1];
+    
+    if (id && id !== "new" && !isNaN(Number(id))) {
+      setIsEditing(true);
+      setServiceId(Number(id));
+    }
+  }, [location]);
+
+  // Query para carregar dados do serviço (se editando)
+  const { data: serviceData, isLoading: isLoadingService } = trpc.services.get.useQuery(
+    serviceId!,
+    { enabled: isEditing && serviceId !== null }
+  );
+
+  // Preencher formulário com dados do serviço quando carregar
+  useEffect(() => {
+    if (serviceData) {
+      setFormData({
+        name: serviceData.name || "",
+        category: serviceData.category || "MANUTENCAO",
+        description: serviceData.description || "",
+        price: serviceData.price?.toString() || "",
+        estimatedTime: serviceData.estimatedTime || "1 hora",
+        status: serviceData.status || "active",
+        notes: serviceData.notes || "",
+      });
+    }
+  }, [serviceData]);
+
+  // Mutation para criar serviço
+  const createServiceMutation = trpc.services.create.useMutation({
+    onSuccess: () => {
+      toast.success("Serviço salvo com sucesso!");
+      navigate("/services");
+    },
+    onError: (error) => {
+      toast.error(`Erro ao salvar serviço: ${error.message}`);
+    },
+  });
+
+  // Mutation para atualizar serviço
+  const updateServiceMutation = trpc.services.update.useMutation({
+    onSuccess: () => {
+      toast.success("Serviço atualizado com sucesso!");
+      navigate("/services");
+    },
+    onError: (error) => {
+      toast.error(`Erro ao atualizar serviço: ${error.message}`);
+    },
+  });
+
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
-  const handleSalvar = () => {
-    if (!formData.nome) {
-      toast.error("Por favor, preencha o nome do serviço");
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Validar campos obrigatórios
+    if (!formData.name || !formData.price) {
+      toast.error("Preencha todos os campos obrigatórios");
       return;
     }
-    if (formData.preco <= 0) {
-      toast.error("Por favor, preencha um preço válido");
-      return;
+
+    const servicePayload = {
+      name: formData.name,
+      category: formData.category,
+      description: formData.description,
+      price: formData.price,
+      estimatedTime: formData.estimatedTime,
+      status: formData.status as "active" | "inactive",
+      notes: formData.notes,
+    };
+
+    if (isEditing && serviceId) {
+      // Atualizar serviço existente
+      updateServiceMutation.mutate({
+        id: serviceId,
+        data: servicePayload,
+      });
+    } else {
+      // Criar novo serviço
+      createServiceMutation.mutate(servicePayload);
     }
-    toast.success("Serviço salvo com sucesso!");
-    setTimeout(() => navigate("/services"), 1500);
   };
+
+  const isSubmitting = loading || createServiceMutation.isPending || updateServiceMutation.isPending || isLoadingService;
+  const pageTitle = isEditing ? "Editar Serviço" : "Novo Serviço";
+  const pageDescription = isEditing 
+    ? "Atualize os dados do serviço abaixo" 
+    : "Preencha os campos abaixo para criar um novo serviço";
+
+  const categorias = [
+    { value: "MANUTENCAO", label: "Manutenção" },
+    { value: "SOFTWARE", label: "Software" },
+    { value: "HARDWARE", label: "Hardware" },
+    { value: "RECUPERACAO", label: "Recuperação" },
+    { value: "INSTALACAO", label: "Instalação" },
+    { value: "SUPORTE", label: "Suporte" },
+  ];
 
   return (
     <Layout>
-      <div className="container py-8">
+      <div className="container py-8 max-w-4xl">
+        {/* Page Title */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-[#00D9FF] mb-2">Novo Serviço</h1>
-          <p className="text-gray-400">Preencha os dados abaixo para criar um novo serviço</p>
+          <h1 className="text-3xl font-bold text-foreground mb-2">
+            {pageTitle}
+          </h1>
+          <p className="text-muted-foreground">
+            {pageDescription}
+          </p>
         </div>
 
-        <div className="space-y-6">
-          {/* INFORMAÇÕES BÁSICAS */}
-          <div>
-            <h3 className="text-lg font-bold text-[#00D9FF] mb-4">📋 Informações Básicas</h3>
-            <Card className="p-6 bg-[#1a1f2e] border-[#00D9FF]/20">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {isLoadingService ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="w-8 h-8 text-accent animate-spin" />
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit}>
+            {/* Informações Básicas */}
+            <Card className="card-float p-8 mb-6">
+              <h2 className="text-2xl font-bold text-foreground mb-6">
+                Informações Básicas
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="md:col-span-2">
-                  <Label className="text-[#00D9FF]">Nome do Serviço *</Label>
-                  <Input
+                  <label className="block text-sm font-semibold text-foreground mb-2">
+                    Nome do Serviço *
+                  </label>
+                  <input
+                    type="text"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleChange}
                     placeholder="Ex: Manutenção de Notebook"
-                    value={formData.nome}
-                    onChange={(e) => handleChange("nome", e.target.value)}
-                    className="bg-[#0f1419] border-[#00D9FF]/30 text-white"
+                    className="w-full px-4 py-3 bg-background border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+                    required
                   />
                 </div>
                 <div>
-                  <Label className="text-[#00D9FF]">Categoria</Label>
-                  <Select value={formData.categoria} onValueChange={(v) => handleChange("categoria", v)}>
-                    <SelectTrigger className="bg-[#0f1419] border-[#00D9FF]/30 text-white">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-[#1a1f2e] border-[#00D9FF]/30">
-                      <SelectItem value="MANUTENCAO">Manutenção</SelectItem>
-                      <SelectItem value="SOFTWARE">Software</SelectItem>
-                      <SelectItem value="HARDWARE">Hardware</SelectItem>
-                      <SelectItem value="RECUPERACAO">Recuperação</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <label className="block text-sm font-semibold text-foreground mb-2">
+                    Categoria
+                  </label>
+                  <select
+                    name="category"
+                    value={formData.category}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+                  >
+                    {categorias.map((cat) => (
+                      <option key={cat.value} value={cat.value}>
+                        {cat.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div>
-                  <Label className="text-[#00D9FF]">Tempo Estimado</Label>
-                  <Input
+                  <label className="block text-sm font-semibold text-foreground mb-2">
+                    Tempo Estimado
+                  </label>
+                  <input
+                    type="text"
+                    name="estimatedTime"
+                    value={formData.estimatedTime}
+                    onChange={handleChange}
                     placeholder="Ex: 2 horas"
-                    value={formData.tempoEstimado}
-                    onChange={(e) => handleChange("tempoEstimado", e.target.value)}
-                    className="bg-[#0f1419] border-[#00D9FF]/30 text-white"
+                    className="w-full px-4 py-3 bg-background border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <Label className="text-[#00D9FF]">Descrição</Label>
-                  <Textarea
+                  <label className="block text-sm font-semibold text-foreground mb-2">
+                    Descrição
+                  </label>
+                  <textarea
+                    name="description"
+                    value={formData.description}
+                    onChange={handleChange}
                     placeholder="Descreva o serviço em detalhes"
-                    value={formData.descricao}
-                    onChange={(e) => handleChange("descricao", e.target.value)}
-                    className="bg-[#0f1419] border-[#00D9FF]/30 text-white min-h-[100px]"
+                    rows={4}
+                    className="w-full px-4 py-3 bg-background border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
                   />
                 </div>
               </div>
             </Card>
-          </div>
 
-          {/* PREÇO E STATUS */}
-          <div>
-            <h3 className="text-lg font-bold text-[#00D9FF] mb-4">💳 Preço e Status</h3>
-            <Card className="p-6 bg-[#1a1f2e] border-[#00D9FF]/20">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Preço e Status */}
+            <Card className="card-float p-8 mb-6">
+              <h2 className="text-2xl font-bold text-foreground mb-6">
+                Preço e Status
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <Label className="text-[#00D9FF]">Preço (R$) *</Label>
-                  <Input
+                  <label className="block text-sm font-semibold text-foreground mb-2">
+                    Preço *
+                  </label>
+                  <input
                     type="number"
+                    name="price"
+                    value={formData.price}
+                    onChange={handleChange}
                     placeholder="0.00"
-                    value={formData.preco}
-                    onChange={(e) => handleChange("preco", parseFloat(e.target.value))}
-                    className="bg-[#0f1419] border-[#00D9FF]/30 text-white"
+                    step="0.01"
+                    className="w-full px-4 py-3 bg-background border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+                    required
                   />
                 </div>
                 <div>
-                  <Label className="text-[#00D9FF]">Status</Label>
-                  <Select value={formData.ativo ? "ATIVO" : "INATIVO"} onValueChange={(v) => handleChange("ativo", v === "ATIVO")}>
-                    <SelectTrigger className="bg-[#0f1419] border-[#00D9FF]/30 text-white">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-[#1a1f2e] border-[#00D9FF]/30">
-                      <SelectItem value="ATIVO">Ativo</SelectItem>
-                      <SelectItem value="INATIVO">Inativo</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <label className="block text-sm font-semibold text-foreground mb-2">
+                    Status
+                  </label>
+                  <select
+                    name="status"
+                    value={formData.status}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+                  >
+                    <option value="active">Ativo</option>
+                    <option value="inactive">Inativo</option>
+                  </select>
                 </div>
               </div>
             </Card>
-          </div>
 
-          {/* OBSERVAÇÕES */}
-          <div>
-            <h3 className="text-lg font-bold text-[#00D9FF] mb-4">📝 Observações</h3>
-            <Card className="p-6 bg-[#1a1f2e] border-[#00D9FF]/20">
-              <Label className="text-[#00D9FF]">Observações</Label>
-              <Textarea
-                placeholder="Observações adicionais sobre o serviço"
-                value={formData.observacoes}
-                onChange={(e) => handleChange("observacoes", e.target.value)}
-                className="bg-[#0f1419] border-[#00D9FF]/30 text-white min-h-[100px]"
+            {/* Observações */}
+            <Card className="card-float p-8 mb-6">
+              <h2 className="text-2xl font-bold text-foreground mb-6">
+                Observações
+              </h2>
+              <textarea
+                name="notes"
+                value={formData.notes}
+                onChange={handleChange}
+                placeholder="Observações gerais sobre o serviço"
+                rows={5}
+                className="w-full px-4 py-3 bg-background border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
               />
             </Card>
-          </div>
 
-          {/* BOTÕES DE AÇÃO */}
-          <div className="flex gap-4 justify-end">
-            <Button
-              onClick={() => navigate("/services")}
-              variant="outline"
-              className="border-[#00D9FF]/30 text-[#00D9FF] hover:bg-[#00D9FF]/10"
-            >
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleSalvar}
-              className="bg-[#00D9FF] text-[#0f1419] hover:bg-[#00D9FF]/80"
-            >
-              <Save className="w-4 h-4 mr-2" />
-              Salvar Serviço
-            </Button>
-          </div>
-        </div>
+            {/* Action Buttons */}
+            <div className="flex gap-4">
+              <Button
+                type="button"
+                onClick={() => navigate("/services")}
+                variant="outline"
+                className="flex-1"
+                disabled={isSubmitting}
+              >
+                Cancelar
+              </Button>
+              <Button type="submit" className="btn-glow flex-1" disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    {isEditing ? "Atualizando..." : "Salvando..."}
+                  </>
+                ) : (
+                  isEditing ? "Atualizar Serviço" : "Salvar Serviço"
+                )}
+              </Button>
+            </div>
+          </form>
+        )}
       </div>
     </Layout>
   );

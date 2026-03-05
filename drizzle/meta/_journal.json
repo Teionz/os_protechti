@@ -15,6 +15,13 @@
       "when": 1772621293196,
       "tag": "0001_steep_power_pack",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1772704674567,
+      "tag": "0002_daily_pestilence",
+      "breakpoints": true
     }
   ]
 }
