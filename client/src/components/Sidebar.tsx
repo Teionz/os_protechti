@@ -164,8 +164,8 @@ export default function Sidebar() {
 
       {/* Sidebar Mobile - Drawer */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-card border-t border-border">
-        <nav className="flex items-center justify-around px-2 py-3 overflow-x-auto">
-          {menuItems.slice(0, 4).map((item) => {
+        <nav className="flex items-center px-2 py-3 overflow-x-auto gap-2">
+          {menuItems.map((item) => {
             const Icon = item.icon;
             return (
               <Button
