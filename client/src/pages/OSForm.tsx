@@ -8,7 +8,7 @@ import { NewClientModal } from "@/components/NewClientModal";
 import Layout from "@/components/Layout";
 import { Save, Plus, Trash2, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import { useLocation, useRoute } from "wouter";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 
@@ -81,6 +81,8 @@ export default function OSForm() {
   const [clientSearch, setClientSearch] = useState("");
   const [serviceSearch, setServiceSearch] = useState("");
   const [productSearch, setProductSearch] = useState("");
+  const hydratedRef = useRef(false);
+  const currentOrderIdRef = useRef<number | null>(null);
 
   // Mutations - declaradas no topo do componente
   const createOrderMutation = trpc.orders.create.useMutation();
@@ -91,6 +93,16 @@ export default function OSForm() {
 
   // Carregar dados da OS se estiver editando
   useEffect(() => {
+    // Se mudou de OS, resetar flag de hidratação
+    const orderId = isEditing ? parseInt(params?.id as string) : null;
+    if (currentOrderIdRef.current !== orderId) {
+      hydratedRef.current = false;
+      currentOrderIdRef.current = orderId;
+    }
+
+    // Só hidratar uma vez por OS
+    if (hydratedRef.current) return;
+
     if (isEditing && existingOrder) {
       setFormData({
         clientId: existingOrder.clientId?.toString() || "",
@@ -137,8 +149,9 @@ export default function OSForm() {
         setOsServices(servicesFromOrder);
         setOsProducts(productsFromOrder);
       }
+      hydratedRef.current = true;
     }
-  }, [isEditing, existingOrder, existingOrderItems]);
+  }, [isEditing, existingOrder, existingOrderItems, params?.id]);
 
   const toggleSection = (section: string) => {
     setExpandedSections({
@@ -338,13 +351,11 @@ export default function OSForm() {
       }
 
       // 2. Se estiver editando, deletar todos os orderItems antigos primeiro
-      if (isEditing && existingOrderItems && existingOrderItems.length > 0) {
-        for (const item of existingOrderItems) {
-          try {
-            await deleteOrderItemMutation.mutateAsync(item.id);
-          } catch (error) {
-            console.error("Erro ao deletar item antigo:", error);
-          }
+      if (isEditing && order.id) {
+        try {
+          await trpc.orderItems.deleteByOrderId.useMutation().mutateAsync(order.id);
+        } catch (error) {
+          console.error("Erro ao deletar itens antigos:", error);
         }
       }
 
@@ -384,6 +395,12 @@ export default function OSForm() {
           description: formData.equipmentCondition,
         });
       }
+
+      // Invalidar queries para garantir dados atualizados
+      const utils = trpc.useUtils();
+      await utils.orderItems.getByOrderId.invalidate(order.id);
+      await utils.orders.get.invalidate(order.id);
+      await utils.orders.list.invalidate();
 
       navigate("/os/list");
     } catch (error: any) {

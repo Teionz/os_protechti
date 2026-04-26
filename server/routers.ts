@@ -342,6 +342,7 @@ export const appRouter = router({
       }))
       .mutation(({ input }) => db.createOrderItem(input)),
     delete: publicProcedure.input(z.number()).mutation(({ input }) => db.deleteOrderItem(input)),
+    deleteByOrderId: publicProcedure.input(z.number()).mutation(({ input }) => db.deleteOrderItemsByOrderId(input)),
   }),
 
   // Equipamentos
