@@ -415,6 +415,14 @@ export const appRouter = router({
         );
       }),
     deleteAll: publicProcedure.mutation(() => db.deleteAllEquipments()),
+    checkTagExists: publicProcedure
+      .input(z.object({
+        equipmentTag: z.string(),
+        excludeId: z.number().optional(),
+      }))
+      .query(async ({ input }) => {
+        return await db.checkEquipmentTagExists(input.equipmentTag, input.excludeId);
+      }),
   }),
 });
 

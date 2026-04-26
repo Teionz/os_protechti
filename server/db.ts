@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { InsertUser, users, clients, InsertClient, products, InsertProduct, services, InsertService, orders, InsertOrder, quotations, InsertQuotation, sales, InsertSale, suppliers, InsertSupplier, equipments, InsertEquipment, orderItems, InsertOrderItem } from "../drizzle/schema";
+import { eq, and, ne } from "drizzle-orm";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -395,9 +395,38 @@ export async function getEquipmentsByClientId(clientId: number) {
   return db.select().from(equipments).where(eq(equipments.clientId, clientId));
 }
 
+export async function checkEquipmentTagExists(equipmentTag: string, excludeId?: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  let query;
+  if (excludeId) {
+    query = db.select().from(equipments).where(
+      and(
+        eq(equipments.equipmentTag, equipmentTag),
+        ne(equipments.id, excludeId)
+      )
+    );
+  } else {
+    query = db.select().from(equipments).where(eq(equipments.equipmentTag, equipmentTag));
+  }
+  
+  const result = await query;
+  return result && result.length > 0;
+}
+
 export async function createEquipment(data: InsertEquipment) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
+  
+  // Validar se etiqueta já existe
+  if (data.equipmentTag) {
+    const tagExists = await checkEquipmentTagExists(data.equipmentTag);
+    if (tagExists) {
+      throw new Error(`Etiqueta de controle '${data.equipmentTag}' já existe no sistema`);
+    }
+  }
+  
   try {
     const result = await db.insert(equipments).values(data);
     // Drizzle MySQL retorna o resultado como um array [insertId, affectedRows]

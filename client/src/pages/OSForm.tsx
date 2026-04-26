@@ -90,6 +90,8 @@ export default function OSForm() {
   const [clientSearch, setClientSearch] = useState("");
   const [serviceSearch, setServiceSearch] = useState("");
   const [productSearch, setProductSearch] = useState("");
+  const [equipmentTagError, setEquipmentTagError] = useState("");
+  const [checkingTag, setCheckingTag] = useState(false);
 
 
   // Mutations e utils - declaradas no topo do componente
@@ -100,6 +102,38 @@ export default function OSForm() {
   const deleteOrderItemMutation = trpc.orderItems.delete.useMutation();
   const deleteOrderItemsByOrderIdMutation = trpc.orderItems.deleteByOrderId.useMutation();
   const createEquipmentMutation = trpc.equipments.create.useMutation();
+
+  // Validar etiqueta em tempo real
+  const validateEquipmentTag = async (tag: string, excludeId?: number) => {
+    if (!tag) {
+      setEquipmentTagError("");
+      return true;
+    }
+
+    setCheckingTag(true);
+    try {
+      const input = { equipmentTag: tag, excludeId };
+      const response = await fetch(`/api/trpc/equipments.checkTagExists?input=${encodeURIComponent(JSON.stringify(input))}`, {
+        method: 'GET',
+        credentials: 'include',
+      });
+      const result = await response.json();
+      const exists = result.result?.data ?? false;
+      
+      if (exists) {
+        setEquipmentTagError(`Etiqueta "${tag}" ja existe no sistema`);
+        return false;
+      } else {
+        setEquipmentTagError("");
+        return true;
+      }
+    } catch (error) {
+      console.error("Erro ao validar etiqueta:", error);
+      return true;
+    } finally {
+      setCheckingTag(false);
+    }
+  };
 
   // Carregar dados da OS se estiver editando
   useEffect(() => {
@@ -297,6 +331,16 @@ export default function OSForm() {
     if (!formData.clientId) {
       toast.error("Selecione um cliente");
       return;
+    }
+
+    // Validar etiqueta antes de salvar
+    if (formData.equipmentTag) {
+      const isTagValid = await validateEquipmentTag(formData.equipmentTag, isEditing ? parseInt(params?.id as string) : undefined);
+      if (!isTagValid) {
+        toast.error("Etiqueta de controle duplicada. Escolha outra etiqueta.");
+        setLoading(false);
+        return;
+      }
     }
 
     setLoading(true);
@@ -695,9 +739,27 @@ export default function OSForm() {
                     type="text"
                     placeholder="Ex: EQUIP-001, TAG-2024-001"
                     value={formData.equipmentTag}
-                    onChange={(e) => handleChange("equipmentTag", e.target.value)}
-                    className="mt-1 bg-background border-border"
+                    onChange={(e) => {
+                      handleChange("equipmentTag", e.target.value);
+                      if (e.target.value) {
+                        validateEquipmentTag(e.target.value, isEditing ? parseInt(params?.id as string) : undefined);
+                      } else {
+                        setEquipmentTagError("");
+                      }
+                    }}
+                    className={`mt-1 bg-background border-border ${
+                      equipmentTagError ? "border-red-500" : ""
+                    }`}
+                    disabled={checkingTag}
                   />
+                  {equipmentTagError && (
+                    <p className="text-red-500 text-sm mt-1 flex items-center gap-1">
+                      ⚠️ {equipmentTagError}
+                    </p>
+                  )}
+                  {checkingTag && (
+                    <p className="text-yellow-500 text-sm mt-1">Verificando disponibilidade...</p>
+                  )}
                 </div>
                 <div className="md:col-span-2">
                   <Label className="text-foreground">Condição do Equipamento</Label>
