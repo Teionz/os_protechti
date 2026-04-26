@@ -325,6 +325,7 @@ export default function OSForm() {
           equipmentBrand: formData.equipmentBrand,
           equipmentModel: formData.equipmentModel,
           equipmentSerial: formData.equipmentSerial,
+          equipmentTag: formData.equipmentTag,
           equipmentCondition: formData.equipmentCondition,
           reportedDefects: formData.reportedDefects,
           accessories: formData.accessories,
