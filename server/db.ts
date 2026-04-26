@@ -400,8 +400,8 @@ export async function createEquipment(data: InsertEquipment) {
   if (!db) throw new Error("Database not available");
   try {
     const result = await db.insert(equipments).values(data);
-    const id = (result as any).insertId || (result as any)[0]?.id;
-    console.log('[createEquipment] Resultado:', { result, id, data });
+    // Drizzle MySQL retorna o resultado como um array [insertId, affectedRows]
+    const id = (result as any)?.[0] || (result as any).insertId;
     if (!id) {
       throw new Error('Falha ao obter ID do equipamento inserido');
     }

@@ -184,6 +184,7 @@ export default function OSForm() {
     client.name?.toLowerCase().includes(clientSearch.toLowerCase()) ||
     client.email?.toLowerCase().includes(clientSearch.toLowerCase())
   );
+  console.log('[OSForm] clientSearch:', clientSearch, 'clients:', clients.length, 'filteredClients:', filteredClients.length);
 
   // Filtrar serviços por busca
   const filteredServices = services.filter((service: any) =>
