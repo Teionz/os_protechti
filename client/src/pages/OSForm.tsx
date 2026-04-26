@@ -716,6 +716,24 @@ export default function OSForm() {
                     className="mt-1 bg-background border-border"
                   />
                 </div>
+                <div className="md:col-span-2">
+                  <Label className="text-foreground">Solução Proposta</Label>
+                  <Textarea
+                    placeholder="Descreva a solução proposta..."
+                    value={formData.proposedSolution}
+                    onChange={(e) => handleChange("proposedSolution", e.target.value)}
+                    className="mt-1 bg-background border-border"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <Label className="text-foreground">Laudo Técnico</Label>
+                  <Textarea
+                    placeholder="Laudo técnico..."
+                    value={formData.technicalReport}
+                    onChange={(e) => handleChange("technicalReport", e.target.value)}
+                    className="mt-1 bg-background border-border"
+                  />
+                </div>
               </div>
             )}
           </Card>
@@ -1039,24 +1057,6 @@ export default function OSForm() {
             <SectionHeader title="Observações" section="observacoes" />
             {expandedSections.observacoes && (
               <div className="space-y-4">
-                <div>
-                  <Label className="text-foreground">Solução Proposta</Label>
-                  <Textarea
-                    placeholder="Descreva a solução proposta..."
-                    value={formData.proposedSolution}
-                    onChange={(e) => handleChange("proposedSolution", e.target.value)}
-                    className="mt-1 bg-background border-border"
-                  />
-                </div>
-                <div>
-                  <Label className="text-foreground">Laudo Técnico</Label>
-                  <Textarea
-                    placeholder="Laudo técnico..."
-                    value={formData.technicalReport}
-                    onChange={(e) => handleChange("technicalReport", e.target.value)}
-                    className="mt-1 bg-background border-border"
-                  />
-                </div>
                 <div>
                   <Label className="text-foreground">Observações Públicas</Label>
                   <Textarea
