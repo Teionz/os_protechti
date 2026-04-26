@@ -1,85 +1,77 @@
-import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import Layout from "@/components/Layout";
-import { Save, Plus, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import { Save, Plus, Trash2, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import { useLocation } from "wouter";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { trpc } from "@/lib/trpc";
 
 /**
  * OSForm - Formulário de cadastro/edição de Ordem de Serviço
- * Design: Dark Tech Professional com multi-step form
+ * Design: Dark Tech Professional com integração tRPC
  * Baseado no GestãoClick com seção de Equipamento expandida
  */
 export default function OSForm() {
   const [, navigate] = useLocation();
+  const [loading, setLoading] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     dadosGerais: true,
     cliente: true,
     equipamento: true,
     servicos: true,
     produtos: true,
-    pagamento: true,
     observacoes: true,
-    campos: true,
   });
 
+  // Buscar dados do banco
+  const { data: clients = [], isLoading: clientsLoading } = trpc.clients.list.useQuery();
+  const { data: services = [], isLoading: servicesLoading } = trpc.services.list.useQuery();
+  const { data: products = [], isLoading: productsLoading } = trpc.products.list.useQuery();
+
+  const isLoadingData = clientsLoading || servicesLoading || productsLoading;
+
   const [formData, setFormData] = useState({
-    numero: "705",
-    data: new Date().toISOString().split("T")[0],
-    entrada: "09:00",
-    saida: "17:00",
-    previsaoEntrega: "",
-    situacao: "ORCANDO",
-    prioridade: "MEDIA",
-    canal: "PRESENCIAL",
-    origem: "ANUNCIO",
-    teclaFaltando: false,
-    telaTrincada: false,
-    carregador: false,
-    bolsa: false,
-    ligando: false,
-    caboEnergia: false,
-    senha: "",
-    cliente: {
-      nome: "",
-      cnpjCpf: "",
-      endereco: "",
-      numero: "",
-      complemento: "",
-      bairro: "",
-      cep: "",
-      cidade: "",
-      estado: "",
-      telefone: "",
-      email: "",
+    clientId: "",
+    orderNumber: `OS-${Date.now()}`,
+    status: "budgeting",
+    priority: "medium",
+    channel: "PRESENCIAL",
+    seller: "",
+    technician: "",
+    equipmentName: "",
+    equipmentBrand: "",
+    equipmentModel: "",
+    equipmentSerial: "",
+    equipmentCondition: "",
+    reportedDefects: "",
+    accessories: "",
+    proposedSolution: "",
+    technicalReport: "",
+    terms: "",
+    publicNotes: "",
+    internalNotes: "",
+  });
+
+  const [osServices, setOsServices] = useState<any[]>([]);
+  const [osProducts, setOsProducts] = useState<any[]>([]);
+  const [clientSearch, setClientSearch] = useState("");
+  const [serviceSearch, setServiceSearch] = useState("");
+  const [productSearch, setProductSearch] = useState("");
+
+  // Mutation para criar ordem
+  const createOrderMutation = trpc.orders.create.useMutation({
+    onSuccess: () => {
+      toast.success("Ordem de Serviço salva com sucesso!");
+      navigate("/os/list");
     },
-    equipamento: {
-      nome: "",
-      marca: "",
-      modelo: "",
-      serie: "",
-      condicoes: "",
-      defeitos: "",
-      acessorios: "",
-      solucao: "",
-      laudo: "",
-      termos: "",
+    onError: (error) => {
+      toast.error(`Erro ao salvar ordem: ${error.message}`);
     },
-    servicos: [{ nome: "", detalhes: "", quantidade: 1, valorUnitario: 0, desconto: 0 }],
-    produtos: [{ nome: "", detalhes: "", unidade: "UN", quantidade: 1, valorUnitario: 0, desconto: 0 }],
-    pagamento: {
-      vencimento: "",
-      valor: 0,
-      forma: "A_COMBINAR",
-      observacao: "",
-    },
-    observacoes: "",
-    observacoesInternas: "",
   });
 
   const toggleSection = (section: string) => {
@@ -90,193 +82,237 @@ export default function OSForm() {
   };
 
   const handleChange = (field: string, value: any) => {
-    setFormData({ ...formData, [field]: value });
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
   };
 
-  const handleClienteChange = (field: string, value: string) => {
-    setFormData({
-      ...formData,
-      cliente: { ...formData.cliente, [field]: value },
-    });
+  // Filtrar clientes por busca
+  const filteredClients = clients.filter((client: any) =>
+    client.name?.toLowerCase().includes(clientSearch.toLowerCase()) ||
+    client.email?.toLowerCase().includes(clientSearch.toLowerCase())
+  );
+
+  // SERVIÇOS
+  const handleAddService = () => {
+    setOsServices([
+      ...osServices,
+      { id: Date.now(), serviceId: "", quantity: 1, unitPrice: 0, subtotal: 0 },
+    ]);
   };
 
-  const handleEquipamentoChange = (field: string, value: string) => {
-    setFormData({
-      ...formData,
-      equipamento: { ...formData.equipamento, [field]: value },
-    });
+  const handleServiceChange = (index: number, field: string, value: any) => {
+    const newServices = [...osServices];
+    newServices[index][field] = value;
+
+    if (field === "serviceId" && value) {
+      const selectedService = services.find((s: any) => s.id === Number(value));
+      if (selectedService) {
+        newServices[index].unitPrice = selectedService.price || 0;
+      }
+    }
+
+    if (field === "quantity" || field === "unitPrice") {
+      newServices[index].subtotal = newServices[index].quantity * newServices[index].unitPrice;
+    }
+
+    setOsServices(newServices);
   };
 
-  const handleServicoChange = (index: number, field: string, value: any) => {
-    const novoServicos = [...formData.servicos];
-    novoServicos[index] = { ...novoServicos[index], [field]: value };
-    setFormData({ ...formData, servicos: novoServicos });
+  const handleRemoveService = (index: number) => {
+    setOsServices(osServices.filter((_, i) => i !== index));
   };
 
-  const handleProdutoChange = (index: number, field: string, value: any) => {
-    const novoProdutos = [...formData.produtos];
-    novoProdutos[index] = { ...novoProdutos[index], [field]: value };
-    setFormData({ ...formData, produtos: novoProdutos });
+  const filteredServices = services.filter((service: any) =>
+    service.name?.toLowerCase().includes(serviceSearch.toLowerCase())
+  );
+
+  // PRODUTOS
+  const handleAddProduct = () => {
+    setOsProducts([
+      ...osProducts,
+      { id: Date.now(), productId: "", quantity: 1, unitPrice: 0, subtotal: 0 },
+    ]);
   };
 
-  const adicionarServico = () => {
-    setFormData({
-      ...formData,
-      servicos: [...formData.servicos, { nome: "", detalhes: "", quantidade: 1, valorUnitario: 0, desconto: 0 }],
-    });
+  const handleProductChange = (index: number, field: string, value: any) => {
+    const newProducts = [...osProducts];
+    newProducts[index][field] = value;
+
+    if (field === "productId" && value) {
+      const selectedProduct = products.find((p: any) => p.id === Number(value));
+      if (selectedProduct) {
+        newProducts[index].unitPrice = selectedProduct.price || 0;
+      }
+    }
+
+    if (field === "quantity" || field === "unitPrice") {
+      newProducts[index].subtotal = newProducts[index].quantity * newProducts[index].unitPrice;
+    }
+
+    setOsProducts(newProducts);
   };
 
-  const removerServico = (index: number) => {
-    setFormData({
-      ...formData,
-      servicos: formData.servicos.filter((_, i) => i !== index),
-    });
+  const handleRemoveProduct = (index: number) => {
+    setOsProducts(osProducts.filter((_, i) => i !== index));
   };
 
-  const adicionarProduto = () => {
-    setFormData({
-      ...formData,
-      produtos: [...formData.produtos, { nome: "", detalhes: "", unidade: "UN", quantidade: 1, valorUnitario: 0, desconto: 0 }],
-    });
-  };
+  const filteredProducts = products.filter((product: any) =>
+    product.name?.toLowerCase().includes(productSearch.toLowerCase())
+  );
 
-  const removerProduto = (index: number) => {
-    setFormData({
-      ...formData,
-      produtos: formData.produtos.filter((_, i) => i !== index),
-    });
-  };
+  // Calcular total
+  const totalServices = osServices.reduce((sum, item) => sum + (item.subtotal || 0), 0);
+  const totalProducts = osProducts.reduce((sum, item) => sum + (item.subtotal || 0), 0);
+  const total = totalServices + totalProducts;
 
-  const calcularTotal = () => {
-    const totalServicos = formData.servicos.reduce((acc, s) => acc + (s.quantidade * s.valorUnitario - s.desconto), 0);
-    const totalProdutos = formData.produtos.reduce((acc, p) => acc + (p.quantidade * p.valorUnitario - p.desconto), 0);
-    return totalServicos + totalProdutos;
-  };
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-  const handleSalvar = () => {
-    if (!formData.cliente.nome) {
-      toast.error("Por favor, preencha o nome do cliente");
+    if (!formData.clientId) {
+      toast.error("Selecione um cliente!");
       return;
     }
-    toast.success("Ordem de Serviço salva com sucesso!");
-    setTimeout(() => navigate("/os/list"), 1500);
+
+    if (!formData.equipmentName) {
+      toast.error("Preencha o nome do equipamento!");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      await createOrderMutation.mutateAsync({
+        orderNumber: formData.orderNumber,
+        clientId: Number(formData.clientId),
+        status: formData.status as any,
+        priority: formData.priority as any,
+        channel: formData.channel,
+        seller: formData.seller,
+        technician: formData.technician,
+        equipmentName: formData.equipmentName,
+        equipmentBrand: formData.equipmentBrand,
+        equipmentModel: formData.equipmentModel,
+        equipmentSerial: formData.equipmentSerial,
+        equipmentCondition: formData.equipmentCondition,
+        reportedDefects: formData.reportedDefects,
+        accessories: formData.accessories,
+        proposedSolution: formData.proposedSolution,
+        technicalReport: formData.technicalReport,
+        terms: formData.terms,
+        publicNotes: formData.publicNotes,
+        internalNotes: formData.internalNotes,
+        total: total.toString(),
+      });
+    } catch (error) {
+      console.error("Erro ao salvar ordem:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const SectionHeader = ({ title, section }: { title: string; section: string }) => (
     <button
       onClick={() => toggleSection(section)}
-      className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-[#00D9FF]/10 to-[#00D9FF]/5 border border-[#00D9FF]/30 rounded-lg hover:border-[#00D9FF]/50 transition-all"
+      className="w-full flex items-center justify-between p-4 bg-accent/10 border border-accent/30 rounded-lg hover:border-accent/50 transition-all"
     >
-      <h3 className="text-lg font-bold text-[#00D9FF]">{title}</h3>
+      <h3 className="text-lg font-bold text-accent">{title}</h3>
       {expandedSections[section as keyof typeof expandedSections] ? (
-        <ChevronUp className="w-5 h-5 text-[#00D9FF]" />
+        <ChevronUp className="w-5 h-5 text-accent" />
       ) : (
-        <ChevronDown className="w-5 h-5 text-[#00D9FF]" />
+        <ChevronDown className="w-5 h-5 text-accent" />
       )}
     </button>
   );
 
+  if (isLoadingData) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-screen">
+          <Loader2 className="w-8 h-8 animate-spin text-accent" />
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
-      <div className="container py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-[#00D9FF] mb-2">Nova Ordem de Serviço</h1>
-          <p className="text-gray-400">Preencha os dados abaixo para criar uma nova ordem de serviço</p>
-        </div>
+      <div className="container py-8 max-w-5xl">
+        <h1 className="text-3xl font-bold text-foreground mb-8">Nova Ordem de Serviço</h1>
 
-        <div className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
           {/* DADOS GERAIS */}
           <div>
             <SectionHeader title="📋 Dados Gerais" section="dadosGerais" />
             {expandedSections.dadosGerais && (
-              <Card className="mt-4 p-6 bg-[#1a1f2e] border-[#00D9FF]/20">
+              <Card className="mt-4 p-6 bg-background border-border">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-[#00D9FF]">Número</Label>
+                    <Label className="text-foreground">Número da OS</Label>
                     <Input
-                      value={formData.numero}
-                      onChange={(e) => handleChange("numero", e.target.value)}
+                      value={formData.orderNumber}
                       disabled
-                      className="bg-[#0f1419] border-[#00D9FF]/30 text-white"
+                      className="bg-background/50 border-border text-foreground"
                     />
                   </div>
+
                   <div>
-                    <Label className="text-[#00D9FF]">Data</Label>
-                    <Input
-                      type="date"
-                      value={formData.data}
-                      onChange={(e) => handleChange("data", e.target.value)}
-                      className="bg-[#0f1419] border-[#00D9FF]/30 text-white"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-[#00D9FF]">Hora Entrada</Label>
-                    <Input
-                      type="time"
-                      value={formData.entrada}
-                      onChange={(e) => handleChange("entrada", e.target.value)}
-                      className="bg-[#0f1419] border-[#00D9FF]/30 text-white"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-[#00D9FF]">Hora Saída</Label>
-                    <Input
-                      type="time"
-                      value={formData.saida}
-                      onChange={(e) => handleChange("saida", e.target.value)}
-                      className="bg-[#0f1419] border-[#00D9FF]/30 text-white"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-[#00D9FF]">Previsão Entrega</Label>
-                    <Input
-                      type="date"
-                      value={formData.previsaoEntrega}
-                      onChange={(e) => handleChange("previsaoEntrega", e.target.value)}
-                      className="bg-[#0f1419] border-[#00D9FF]/30 text-white"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-[#00D9FF]">Situação</Label>
-                    <Select value={formData.situacao} onValueChange={(v) => handleChange("situacao", v)}>
-                      <SelectTrigger className="bg-[#0f1419] border-[#00D9FF]/30 text-white">
+                    <Label className="text-foreground">Status</Label>
+                    <Select value={formData.status} onValueChange={(v) => handleChange("status", v)}>
+                      <SelectTrigger className="bg-background border-border text-foreground">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="bg-[#1a1f2e] border-[#00D9FF]/30">
-                        <SelectItem value="ORCANDO">Orçando</SelectItem>
-                        <SelectItem value="AGUARDANDO_APROVACAO">Aguardando Aprovação</SelectItem>
-                        <SelectItem value="EM_ANDAMENTO">Em Andamento</SelectItem>
-                        <SelectItem value="AGUARDANDO_RETIRADA">Aguardando Retirada</SelectItem>
-                        <SelectItem value="FINALIZADA">Finalizada</SelectItem>
+                      <SelectContent className="bg-background border-border">
+                        <SelectItem value="budgeting">Orçando</SelectItem>
+                        <SelectItem value="awaiting_approval">Aguardando Aprovação</SelectItem>
+                        <SelectItem value="in_progress">Em Andamento</SelectItem>
+                        <SelectItem value="awaiting_pickup">Aguardando Retirada</SelectItem>
+                        <SelectItem value="completed">Finalizada</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
+
                   <div>
-                    <Label className="text-[#00D9FF]">Prioridade</Label>
-                    <Select value={formData.prioridade} onValueChange={(v) => handleChange("prioridade", v)}>
-                      <SelectTrigger className="bg-[#0f1419] border-[#00D9FF]/30 text-white">
+                    <Label className="text-foreground">Prioridade</Label>
+                    <Select value={formData.priority} onValueChange={(v) => handleChange("priority", v)}>
+                      <SelectTrigger className="bg-background border-border text-foreground">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="bg-[#1a1f2e] border-[#00D9FF]/30">
-                        <SelectItem value="BAIXA">Baixa</SelectItem>
-                        <SelectItem value="MEDIA">Média</SelectItem>
-                        <SelectItem value="ALTA">Alta</SelectItem>
-                        <SelectItem value="URGENTE">Urgente</SelectItem>
+                      <SelectContent className="bg-background border-border">
+                        <SelectItem value="low">Baixa</SelectItem>
+                        <SelectItem value="medium">Média</SelectItem>
+                        <SelectItem value="high">Alta</SelectItem>
+                        <SelectItem value="urgent">Urgente</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
+
                   <div>
-                    <Label className="text-[#00D9FF]">Canal de Venda</Label>
-                    <Select value={formData.canal} onValueChange={(v) => handleChange("canal", v)}>
-                      <SelectTrigger className="bg-[#0f1419] border-[#00D9FF]/30 text-white">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="bg-[#1a1f2e] border-[#00D9FF]/30">
-                        <SelectItem value="PRESENCIAL">Presencial</SelectItem>
-                        <SelectItem value="INTERNET">Internet</SelectItem>
-                        <SelectItem value="TELEMARKETING">Telemarketing</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Label className="text-foreground">Canal</Label>
+                    <Input
+                      value={formData.channel}
+                      onChange={(e) => handleChange("channel", e.target.value)}
+                      className="bg-background border-border text-foreground"
+                    />
+                  </div>
+
+                  <div>
+                    <Label className="text-foreground">Vendedor</Label>
+                    <Input
+                      value={formData.seller}
+                      onChange={(e) => handleChange("seller", e.target.value)}
+                      className="bg-background border-border text-foreground"
+                    />
+                  </div>
+
+                  <div>
+                    <Label className="text-foreground">Técnico</Label>
+                    <Input
+                      value={formData.technician}
+                      onChange={(e) => handleChange("technician", e.target.value)}
+                      className="bg-background border-border text-foreground"
+                    />
                   </div>
                 </div>
               </Card>
@@ -287,315 +323,109 @@ export default function OSForm() {
           <div>
             <SectionHeader title="👤 Cliente" section="cliente" />
             {expandedSections.cliente && (
-              <Card className="mt-4 p-6 bg-[#1a1f2e] border-[#00D9FF]/20">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="md:col-span-2">
-                    <Label className="text-[#00D9FF]">Nome do Cliente *</Label>
-                    <Input
-                      placeholder="Digite o nome do cliente"
-                      value={formData.cliente.nome}
-                      onChange={(e) => handleClienteChange("nome", e.target.value)}
-                      className="bg-[#0f1419] border-[#00D9FF]/30 text-white"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-[#00D9FF]">CNPJ/CPF</Label>
-                    <Input
-                      placeholder="00.000.000/0000-00"
-                      value={formData.cliente.cnpjCpf}
-                      onChange={(e) => handleClienteChange("cnpjCpf", e.target.value)}
-                      className="bg-[#0f1419] border-[#00D9FF]/30 text-white"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-[#00D9FF]">Email</Label>
-                    <Input
-                      type="email"
-                      placeholder="email@exemplo.com"
-                      value={formData.cliente.email}
-                      onChange={(e) => handleClienteChange("email", e.target.value)}
-                      className="bg-[#0f1419] border-[#00D9FF]/30 text-white"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-[#00D9FF]">Telefone</Label>
-                    <Input
-                      placeholder="(17) 99999-9999"
-                      value={formData.cliente.telefone}
-                      onChange={(e) => handleClienteChange("telefone", e.target.value)}
-                      className="bg-[#0f1419] border-[#00D9FF]/30 text-white"
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <Label className="text-[#00D9FF]">Endereço</Label>
-                    <Input
-                      placeholder="Rua, Avenida, etc"
-                      value={formData.cliente.endereco}
-                      onChange={(e) => handleClienteChange("endereco", e.target.value)}
-                      className="bg-[#0f1419] border-[#00D9FF]/30 text-white"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-[#00D9FF]">Número</Label>
-                    <Input
-                      placeholder="123"
-                      value={formData.cliente.numero}
-                      onChange={(e) => handleClienteChange("numero", e.target.value)}
-                      className="bg-[#0f1419] border-[#00D9FF]/30 text-white"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-[#00D9FF]">Complemento</Label>
-                    <Input
-                      placeholder="Apto, Sala, etc"
-                      value={formData.cliente.complemento}
-                      onChange={(e) => handleClienteChange("complemento", e.target.value)}
-                      className="bg-[#0f1419] border-[#00D9FF]/30 text-white"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-[#00D9FF]">Bairro</Label>
-                    <Input
-                      placeholder="Bairro"
-                      value={formData.cliente.bairro}
-                      onChange={(e) => handleClienteChange("bairro", e.target.value)}
-                      className="bg-[#0f1419] border-[#00D9FF]/30 text-white"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-[#00D9FF]">CEP</Label>
-                    <Input
-                      placeholder="00000-000"
-                      value={formData.cliente.cep}
-                      onChange={(e) => handleClienteChange("cep", e.target.value)}
-                      className="bg-[#0f1419] border-[#00D9FF]/30 text-white"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-[#00D9FF]">Cidade</Label>
-                    <Input
-                      placeholder="Cidade"
-                      value={formData.cliente.cidade}
-                      onChange={(e) => handleClienteChange("cidade", e.target.value)}
-                      className="bg-[#0f1419] border-[#00D9FF]/30 text-white"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-[#00D9FF]">Estado</Label>
-                    <Input
-                      placeholder="SP"
-                      value={formData.cliente.estado}
-                      onChange={(e) => handleClienteChange("estado", e.target.value)}
-                      className="bg-[#0f1419] border-[#00D9FF]/30 text-white"
-                    />
-                  </div>
+              <Card className="mt-4 p-6 bg-background border-border">
+                <div>
+                  <Label className="text-foreground mb-2 block">Cliente *</Label>
+                  <input
+                    type="text"
+                    placeholder="Buscar cliente..."
+                    value={clientSearch}
+                    onChange={(e) => setClientSearch(e.target.value)}
+                    className="w-full px-4 py-2 bg-background border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent"
+                  />
+                  {clientSearch && filteredClients.length > 0 && (
+                    <div className="mt-2 border border-border rounded-lg bg-background max-h-48 overflow-y-auto">
+                      {filteredClients.map((client: any) => (
+                        <button
+                          key={client.id}
+                          type="button"
+                          onClick={() => {
+                            setFormData((prev) => ({ ...prev, clientId: client.id.toString() }));
+                            setClientSearch(client.name);
+                          }}
+                          className="w-full text-left px-4 py-2 hover:bg-accent/10 text-foreground transition"
+                        >
+                          <div className="font-medium">{client.name}</div>
+                          <div className="text-xs text-muted-foreground">{client.email}</div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {formData.clientId && (
+                    <div className="mt-2 p-2 bg-accent/10 rounded text-sm text-foreground">
+                      ✓ Cliente selecionado: {clients.find((c: any) => c.id === Number(formData.clientId))?.name}
+                    </div>
+                  )}
                 </div>
               </Card>
             )}
           </div>
 
-          {/* EQUIPAMENTO - EXPANDIDO */}
+          {/* EQUIPAMENTO */}
           <div>
             <SectionHeader title="🖥️ Equipamento" section="equipamento" />
             {expandedSections.equipamento && (
-              <Card className="mt-4 p-6 bg-[#1a1f2e] border-[#00D9FF]/20">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="md:col-span-2">
-                    <Label className="text-[#00D9FF]">Nome do Equipamento</Label>
-                    <Input
-                      placeholder="Ex: Notebook, Smartphone, etc"
-                      value={formData.equipamento.nome}
-                      onChange={(e) => handleEquipamentoChange("nome", e.target.value)}
-                      className="bg-[#0f1419] border-[#00D9FF]/30 text-white"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-[#00D9FF]">Marca</Label>
-                    <Input
-                      placeholder="Ex: Dell, Apple, Samsung"
-                      value={formData.equipamento.marca}
-                      onChange={(e) => handleEquipamentoChange("marca", e.target.value)}
-                      className="bg-[#0f1419] border-[#00D9FF]/30 text-white"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-[#00D9FF]">Modelo</Label>
-                    <Input
-                      placeholder="Ex: XPS 13, iPhone 14"
-                      value={formData.equipamento.modelo}
-                      onChange={(e) => handleEquipamentoChange("modelo", e.target.value)}
-                      className="bg-[#0f1419] border-[#00D9FF]/30 text-white"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-[#00D9FF]">Série</Label>
-                    <Input
-                      placeholder="Número de série"
-                      value={formData.equipamento.serie}
-                      onChange={(e) => handleEquipamentoChange("serie", e.target.value)}
-                      className="bg-[#0f1419] border-[#00D9FF]/30 text-white"
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <Label className="text-[#00D9FF]">Condições do Equipamento</Label>
-                    <Textarea
-                      placeholder="Descreva o estado geral do equipamento"
-                      value={formData.equipamento.condicoes}
-                      onChange={(e) => handleEquipamentoChange("condicoes", e.target.value)}
-                      className="bg-[#0f1419] border-[#00D9FF]/30 text-white min-h-[80px]"
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <Label className="text-[#00D9FF]">Defeitos Relatados</Label>
-                    <Textarea
-                      placeholder="Descreva os problemas/defeitos"
-                      value={formData.equipamento.defeitos}
-                      onChange={(e) => handleEquipamentoChange("defeitos", e.target.value)}
-                      className="bg-[#0f1419] border-[#00D9FF]/30 text-white min-h-[80px]"
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <Label className="text-[#00D9FF]">Acessórios</Label>
-                    <Textarea
-                      placeholder="Ex: Carregador, Cabo, Bolsa, etc"
-                      value={formData.equipamento.acessorios}
-                      onChange={(e) => handleEquipamentoChange("acessorios", e.target.value)}
-                      className="bg-[#0f1419] border-[#00D9FF]/30 text-white min-h-[80px]"
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <Label className="text-[#00D9FF]">Solução Proposta</Label>
-                    <Textarea
-                      placeholder="Descreva a solução que será implementada"
-                      value={formData.equipamento.solucao}
-                      onChange={(e) => handleEquipamentoChange("solucao", e.target.value)}
-                      className="bg-[#0f1419] border-[#00D9FF]/30 text-white min-h-[80px]"
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <Label className="text-[#00D9FF]">Laudo Técnico</Label>
-                    <Textarea
-                      placeholder="Resultado do diagnóstico técnico"
-                      value={formData.equipamento.laudo}
-                      onChange={(e) => handleEquipamentoChange("laudo", e.target.value)}
-                      className="bg-[#0f1419] border-[#00D9FF]/30 text-white min-h-[80px]"
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <Label className="text-[#00D9FF]">Termos e Condições</Label>
-                    <Textarea
-                      placeholder="Termos específicos desta ordem"
-                      value={formData.equipamento.termos}
-                      onChange={(e) => handleEquipamentoChange("termos", e.target.value)}
-                      className="bg-[#0f1419] border-[#00D9FF]/30 text-white min-h-[80px]"
-                    />
-                  </div>
-                </div>
-              </Card>
-            )}
-          </div>
-
-          {/* CAMPOS EXTRAS */}
-          <div>
-            <SectionHeader title="⚙️ Campos Extras" section="campos" />
-            {expandedSections.campos && (
-              <Card className="mt-4 p-6 bg-[#1a1f2e] border-[#00D9FF]/20">
+              <Card className="mt-4 p-6 bg-background border-border">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-[#00D9FF]">Origem</Label>
-                    <Select value={formData.origem} onValueChange={(v) => handleChange("origem", v)}>
-                      <SelectTrigger className="bg-[#0f1419] border-[#00D9FF]/30 text-white">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="bg-[#1a1f2e] border-[#00D9FF]/30">
-                        <SelectItem value="ANUNCIO">Anúncio</SelectItem>
-                        <SelectItem value="CLIENTE">Cliente</SelectItem>
-                        <SelectItem value="BNI">BNI</SelectItem>
-                        <SelectItem value="INDICACAO">Indicação</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Label className="text-foreground">Nome do Equipamento *</Label>
+                    <Input
+                      value={formData.equipmentName}
+                      onChange={(e) => handleChange("equipmentName", e.target.value)}
+                      placeholder="Ex: Notebook, Desktop, Impressora"
+                      className="bg-background border-border text-foreground"
+                    />
                   </div>
                   <div>
-                    <Label className="text-[#00D9FF]">Senha</Label>
+                    <Label className="text-foreground">Marca</Label>
                     <Input
-                      type="password"
-                      placeholder="Senha do equipamento"
-                      value={formData.senha}
-                      onChange={(e) => handleChange("senha", e.target.value)}
-                      className="bg-[#0f1419] border-[#00D9FF]/30 text-white"
+                      value={formData.equipmentBrand}
+                      onChange={(e) => handleChange("equipmentBrand", e.target.value)}
+                      className="bg-background border-border text-foreground"
                     />
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id="teclaFaltando"
-                      checked={formData.teclaFaltando}
-                      onChange={(e) => handleChange("teclaFaltando", e.target.checked)}
-                      className="w-4 h-4"
+                  <div>
+                    <Label className="text-foreground">Modelo</Label>
+                    <Input
+                      value={formData.equipmentModel}
+                      onChange={(e) => handleChange("equipmentModel", e.target.value)}
+                      className="bg-background border-border text-foreground"
                     />
-                    <Label htmlFor="teclaFaltando" className="text-[#00D9FF] cursor-pointer">
-                      Tecla Faltando
-                    </Label>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id="telaTrincada"
-                      checked={formData.telaTrincada}
-                      onChange={(e) => handleChange("telaTrincada", e.target.checked)}
-                      className="w-4 h-4"
+                  <div>
+                    <Label className="text-foreground">Série</Label>
+                    <Input
+                      value={formData.equipmentSerial}
+                      onChange={(e) => handleChange("equipmentSerial", e.target.value)}
+                      className="bg-background border-border text-foreground"
                     />
-                    <Label htmlFor="telaTrincada" className="text-[#00D9FF] cursor-pointer">
-                      Tela Trincada
-                    </Label>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id="carregador"
-                      checked={formData.carregador}
-                      onChange={(e) => handleChange("carregador", e.target.checked)}
-                      className="w-4 h-4"
+                  <div className="md:col-span-2">
+                    <Label className="text-foreground">Condições do Equipamento</Label>
+                    <Textarea
+                      value={formData.equipmentCondition}
+                      onChange={(e) => handleChange("equipmentCondition", e.target.value)}
+                      rows={2}
+                      className="bg-background border-border text-foreground"
                     />
-                    <Label htmlFor="carregador" className="text-[#00D9FF] cursor-pointer">
-                      Carregador
-                    </Label>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id="bolsa"
-                      checked={formData.bolsa}
-                      onChange={(e) => handleChange("bolsa", e.target.checked)}
-                      className="w-4 h-4"
+                  <div className="md:col-span-2">
+                    <Label className="text-foreground">Defeitos Relatados</Label>
+                    <Textarea
+                      value={formData.reportedDefects}
+                      onChange={(e) => handleChange("reportedDefects", e.target.value)}
+                      rows={2}
+                      className="bg-background border-border text-foreground"
                     />
-                    <Label htmlFor="bolsa" className="text-[#00D9FF] cursor-pointer">
-                      Bolsa
-                    </Label>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id="ligando"
-                      checked={formData.ligando}
-                      onChange={(e) => handleChange("ligando", e.target.checked)}
-                      className="w-4 h-4"
+                  <div className="md:col-span-2">
+                    <Label className="text-foreground">Acessórios</Label>
+                    <Textarea
+                      value={formData.accessories}
+                      onChange={(e) => handleChange("accessories", e.target.value)}
+                      rows={2}
+                      className="bg-background border-border text-foreground"
                     />
-                    <Label htmlFor="ligando" className="text-[#00D9FF] cursor-pointer">
-                      Ligando
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id="caboEnergia"
-                      checked={formData.caboEnergia}
-                      onChange={(e) => handleChange("caboEnergia", e.target.checked)}
-                      className="w-4 h-4"
-                    />
-                    <Label htmlFor="caboEnergia" className="text-[#00D9FF] cursor-pointer">
-                      Cabo de Energia
-                    </Label>
                   </div>
                 </div>
               </Card>
@@ -603,293 +433,290 @@ export default function OSForm() {
           </div>
 
           {/* SERVIÇOS */}
-          <div>
-            <SectionHeader title="🔧 Serviços/Mão de Obra" section="servicos" />
-            {expandedSections.servicos && (
-              <Card className="mt-4 p-6 bg-[#1a1f2e] border-[#00D9FF]/20">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-[#00D9FF]/20">
-                        <th className="text-left p-2 text-[#00D9FF]">Serviço</th>
-                        <th className="text-left p-2 text-[#00D9FF]">Detalhes</th>
-                        <th className="text-center p-2 text-[#00D9FF]">Qtd</th>
-                        <th className="text-right p-2 text-[#00D9FF]">Valor</th>
-                        <th className="text-right p-2 text-[#00D9FF]">Desconto</th>
-                        <th className="text-right p-2 text-[#00D9FF]">Subtotal</th>
-                        <th className="text-center p-2 text-[#00D9FF]">Ação</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {formData.servicos.map((servico, index) => (
-                        <tr key={index} className="border-b border-[#00D9FF]/10">
-                          <td className="p-2">
-                            <Input
-                              placeholder="Nome do serviço"
-                              value={servico.nome}
-                              onChange={(e) => handleServicoChange(index, "nome", e.target.value)}
-                              className="bg-[#0f1419] border-[#00D9FF]/30 text-white text-xs"
-                            />
-                          </td>
-                          <td className="p-2">
-                            <Input
-                              placeholder="Detalhes"
-                              value={servico.detalhes}
-                              onChange={(e) => handleServicoChange(index, "detalhes", e.target.value)}
-                              className="bg-[#0f1419] border-[#00D9FF]/30 text-white text-xs"
-                            />
-                          </td>
-                          <td className="p-2">
-                            <Input
-                              type="number"
-                              value={servico.quantidade}
-                              onChange={(e) => handleServicoChange(index, "quantidade", parseFloat(e.target.value))}
-                              className="bg-[#0f1419] border-[#00D9FF]/30 text-white text-xs text-center"
-                            />
-                          </td>
-                          <td className="p-2">
-                            <Input
-                              type="number"
-                              value={servico.valorUnitario}
-                              onChange={(e) => handleServicoChange(index, "valorUnitario", parseFloat(e.target.value))}
-                              className="bg-[#0f1419] border-[#00D9FF]/30 text-white text-xs text-right"
-                            />
-                          </td>
-                          <td className="p-2">
-                            <Input
-                              type="number"
-                              value={servico.desconto}
-                              onChange={(e) => handleServicoChange(index, "desconto", parseFloat(e.target.value))}
-                              className="bg-[#0f1419] border-[#00D9FF]/30 text-white text-xs text-right"
-                            />
-                          </td>
-                          <td className="p-2 text-right text-[#00D9FF]">
-                            R$ {(servico.quantidade * servico.valorUnitario - servico.desconto).toFixed(2)}
-                          </td>
-                          <td className="p-2 text-center">
-                            <button
-                              onClick={() => removerServico(index)}
-                              className="text-red-500 hover:text-red-400"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <Button
-                  onClick={adicionarServico}
-                  className="mt-4 bg-[#00D9FF] text-[#0f1419] hover:bg-[#00D9FF]/80"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Adicionar Serviço
-                </Button>
-              </Card>
-            )}
-          </div>
+          {osServices.length > 0 && (
+            <div>
+              <SectionHeader title="🔧 Serviços" section="servicos" />
+              {expandedSections.servicos && (
+                <Card className="mt-4 p-6 bg-background border-border">
+                  <div className="space-y-4">
+                    {osServices.map((service, index) => (
+                      <div key={service.id} className="flex gap-4 items-end p-4 bg-background/50 rounded-lg">
+                        <div className="flex-1">
+                          <Label className="text-sm font-medium text-foreground mb-2 block">Serviço</Label>
+                          <input
+                            type="text"
+                            placeholder="Buscar serviço..."
+                            value={serviceSearch}
+                            onChange={(e) => setServiceSearch(e.target.value)}
+                            className="w-full px-4 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-accent"
+                          />
+                          {serviceSearch && filteredServices.length > 0 && (
+                            <div className="mt-2 border border-border rounded-lg bg-background max-h-32 overflow-y-auto">
+                              {filteredServices.map((svc: any) => (
+                                <button
+                                  key={svc.id}
+                                  type="button"
+                                  onClick={() => {
+                                    handleServiceChange(index, "serviceId", svc.id);
+                                    setServiceSearch("");
+                                  }}
+                                  className="w-full text-left px-4 py-2 hover:bg-accent/10 text-foreground transition"
+                                >
+                                  {svc.name}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="w-20">
+                          <Label className="text-sm font-medium text-foreground mb-2 block">Qtd</Label>
+                          <Input
+                            type="number"
+                            min="1"
+                            value={service.quantity}
+                            onChange={(e) => handleServiceChange(index, "quantity", Number(e.target.value))}
+                            className="bg-background border-border text-foreground"
+                          />
+                        </div>
+
+                        <div className="w-24">
+                          <Label className="text-sm font-medium text-foreground mb-2 block">Valor</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={service.unitPrice}
+                            onChange={(e) => handleServiceChange(index, "unitPrice", Number(e.target.value))}
+                            className="bg-background border-border text-foreground"
+                          />
+                        </div>
+
+                        <div className="w-24">
+                          <Label className="text-sm font-medium text-foreground mb-2 block">Subtotal</Label>
+                          <div className="px-4 py-2 bg-accent/10 rounded-lg text-foreground font-semibold">
+                            R$ {service.subtotal.toFixed(2)}
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveService(index)}
+                          className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition"
+                        >
+                          <Trash2 className="w-5 h-5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              )}
+            </div>
+          )}
 
           {/* PRODUTOS */}
-          <div>
-            <SectionHeader title="📦 Produtos/Peças" section="produtos" />
-            {expandedSections.produtos && (
-              <Card className="mt-4 p-6 bg-[#1a1f2e] border-[#00D9FF]/20">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-[#00D9FF]/20">
-                        <th className="text-left p-2 text-[#00D9FF]">Produto</th>
-                        <th className="text-left p-2 text-[#00D9FF]">Detalhes</th>
-                        <th className="text-center p-2 text-[#00D9FF]">Qtd</th>
-                        <th className="text-right p-2 text-[#00D9FF]">Valor</th>
-                        <th className="text-right p-2 text-[#00D9FF]">Desconto</th>
-                        <th className="text-right p-2 text-[#00D9FF]">Subtotal</th>
-                        <th className="text-center p-2 text-[#00D9FF]">Ação</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {formData.produtos.map((produto, index) => (
-                        <tr key={index} className="border-b border-[#00D9FF]/10">
-                          <td className="p-2">
-                            <Input
-                              placeholder="Nome do produto"
-                              value={produto.nome}
-                              onChange={(e) => handleProdutoChange(index, "nome", e.target.value)}
-                              className="bg-[#0f1419] border-[#00D9FF]/30 text-white text-xs"
-                            />
-                          </td>
-                          <td className="p-2">
-                            <Input
-                              placeholder="Detalhes"
-                              value={produto.detalhes}
-                              onChange={(e) => handleProdutoChange(index, "detalhes", e.target.value)}
-                              className="bg-[#0f1419] border-[#00D9FF]/30 text-white text-xs"
-                            />
-                          </td>
-                          <td className="p-2">
-                            <Input
-                              type="number"
-                              value={produto.quantidade}
-                              onChange={(e) => handleProdutoChange(index, "quantidade", parseFloat(e.target.value))}
-                              className="bg-[#0f1419] border-[#00D9FF]/30 text-white text-xs text-center"
-                            />
-                          </td>
-                          <td className="p-2">
-                            <Input
-                              type="number"
-                              value={produto.valorUnitario}
-                              onChange={(e) => handleProdutoChange(index, "valorUnitario", parseFloat(e.target.value))}
-                              className="bg-[#0f1419] border-[#00D9FF]/30 text-white text-xs text-right"
-                            />
-                          </td>
-                          <td className="p-2">
-                            <Input
-                              type="number"
-                              value={produto.desconto}
-                              onChange={(e) => handleProdutoChange(index, "desconto", parseFloat(e.target.value))}
-                              className="bg-[#0f1419] border-[#00D9FF]/30 text-white text-xs text-right"
-                            />
-                          </td>
-                          <td className="p-2 text-right text-[#00D9FF]">
-                            R$ {(produto.quantidade * produto.valorUnitario - produto.desconto).toFixed(2)}
-                          </td>
-                          <td className="p-2 text-center">
-                            <button
-                              onClick={() => removerProduto(index)}
-                              className="text-red-500 hover:text-red-400"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <Button
-                  onClick={adicionarProduto}
-                  className="mt-4 bg-[#00D9FF] text-[#0f1419] hover:bg-[#00D9FF]/80"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Adicionar Produto
-                </Button>
-              </Card>
-            )}
+          {osProducts.length > 0 && (
+            <div>
+              <SectionHeader title="📦 Produtos" section="produtos" />
+              {expandedSections.produtos && (
+                <Card className="mt-4 p-6 bg-background border-border">
+                  <div className="space-y-4">
+                    {osProducts.map((product, index) => (
+                      <div key={product.id} className="flex gap-4 items-end p-4 bg-background/50 rounded-lg">
+                        <div className="flex-1">
+                          <Label className="text-sm font-medium text-foreground mb-2 block">Produto</Label>
+                          <input
+                            type="text"
+                            placeholder="Buscar produto..."
+                            value={productSearch}
+                            onChange={(e) => setProductSearch(e.target.value)}
+                            className="w-full px-4 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-accent"
+                          />
+                          {productSearch && filteredProducts.length > 0 && (
+                            <div className="mt-2 border border-border rounded-lg bg-background max-h-32 overflow-y-auto">
+                              {filteredProducts.map((prod: any) => (
+                                <button
+                                  key={prod.id}
+                                  type="button"
+                                  onClick={() => {
+                                    handleProductChange(index, "productId", prod.id);
+                                    setProductSearch("");
+                                  }}
+                                  className="w-full text-left px-4 py-2 hover:bg-accent/10 text-foreground transition"
+                                >
+                                  {prod.name}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="w-20">
+                          <Label className="text-sm font-medium text-foreground mb-2 block">Qtd</Label>
+                          <Input
+                            type="number"
+                            min="1"
+                            value={product.quantity}
+                            onChange={(e) => handleProductChange(index, "quantity", Number(e.target.value))}
+                            className="bg-background border-border text-foreground"
+                          />
+                        </div>
+
+                        <div className="w-24">
+                          <Label className="text-sm font-medium text-foreground mb-2 block">Valor</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={product.unitPrice}
+                            onChange={(e) => handleProductChange(index, "unitPrice", Number(e.target.value))}
+                            className="bg-background border-border text-foreground"
+                          />
+                        </div>
+
+                        <div className="w-24">
+                          <Label className="text-sm font-medium text-foreground mb-2 block">Subtotal</Label>
+                          <div className="px-4 py-2 bg-accent/10 rounded-lg text-foreground font-semibold">
+                            R$ {product.subtotal.toFixed(2)}
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveProduct(index)}
+                          className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition"
+                        >
+                          <Trash2 className="w-5 h-5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              )}
+            </div>
+          )}
+
+          {/* BOTÕES PARA ADICIONAR */}
+          <div className="flex gap-4">
+            <button
+              type="button"
+              onClick={handleAddService}
+              className="flex items-center gap-2 px-6 py-2 bg-accent text-background rounded-lg hover:bg-accent/90 transition font-medium"
+            >
+              <Plus className="w-5 h-5" />
+              Adicionar Serviço
+            </button>
+
+            <button
+              type="button"
+              onClick={handleAddProduct}
+              className="flex items-center gap-2 px-6 py-2 bg-accent text-background rounded-lg hover:bg-accent/90 transition font-medium"
+            >
+              <Plus className="w-5 h-5" />
+              Adicionar Produto
+            </button>
           </div>
 
-          {/* PAGAMENTO */}
-          <div>
-            <SectionHeader title="💳 Pagamento" section="pagamento" />
-            {expandedSections.pagamento && (
-              <Card className="mt-4 p-6 bg-[#1a1f2e] border-[#00D9FF]/20">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-[#00D9FF]">Vencimento</Label>
-                    <Input
-                      type="date"
-                      value={formData.pagamento.vencimento}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          pagamento: { ...formData.pagamento, vencimento: e.target.value },
-                        })
-                      }
-                      className="bg-[#0f1419] border-[#00D9FF]/30 text-white"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-[#00D9FF]">Forma de Pagamento</Label>
-                    <Select
-                      value={formData.pagamento.forma}
-                      onValueChange={(v) =>
-                        setFormData({
-                          ...formData,
-                          pagamento: { ...formData.pagamento, forma: v },
-                        })
-                      }
-                    >
-                      <SelectTrigger className="bg-[#0f1419] border-[#00D9FF]/30 text-white">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="bg-[#1a1f2e] border-[#00D9FF]/30">
-                        <SelectItem value="A_COMBINAR">A Combinar</SelectItem>
-                        <SelectItem value="DINHEIRO">Dinheiro</SelectItem>
-                        <SelectItem value="CARTAO">Cartão</SelectItem>
-                        <SelectItem value="BOLETO">Boleto</SelectItem>
-                        <SelectItem value="PIX">PIX</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="md:col-span-2">
-                    <Label className="text-[#00D9FF]">Total: R$ {calcularTotal().toFixed(2)}</Label>
-                  </div>
-                  <div className="md:col-span-2">
-                    <Label className="text-[#00D9FF]">Observação de Pagamento</Label>
-                    <Textarea
-                      placeholder="Observações sobre o pagamento"
-                      value={formData.pagamento.observacao}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          pagamento: { ...formData.pagamento, observacao: e.target.value },
-                        })
-                      }
-                      className="bg-[#0f1419] border-[#00D9FF]/30 text-white min-h-[80px]"
-                    />
-                  </div>
-                </div>
-              </Card>
-            )}
-          </div>
+          {/* TOTALIZAÇÕES */}
+          <Card className="p-6 bg-background border-border space-y-2">
+            <div className="flex justify-between text-foreground">
+              <span>Total Serviços:</span>
+              <span className="font-semibold">R$ {totalServices.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between text-foreground">
+              <span>Total Produtos:</span>
+              <span className="font-semibold">R$ {totalProducts.toFixed(2)}</span>
+            </div>
+            <div className="border-t border-border pt-2 flex justify-between text-lg text-accent font-bold">
+              <span>Total Geral:</span>
+              <span>R$ {total.toFixed(2)}</span>
+            </div>
+          </Card>
 
           {/* OBSERVAÇÕES */}
           <div>
             <SectionHeader title="📝 Observações" section="observacoes" />
             {expandedSections.observacoes && (
-              <Card className="mt-4 p-6 bg-[#1a1f2e] border-[#00D9FF]/20">
-                <div className="space-y-4">
-                  <div>
-                    <Label className="text-[#00D9FF]">Observações (será impressa)</Label>
-                    <Textarea
-                      placeholder="Observações que aparecerão no documento impresso"
-                      value={formData.observacoes}
-                      onChange={(e) => handleChange("observacoes", e.target.value)}
-                      className="bg-[#0f1419] border-[#00D9FF]/30 text-white min-h-[100px]"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-[#00D9FF]">Observações Internas</Label>
-                    <Textarea
-                      placeholder="Observações internas (não serão impressas)"
-                      value={formData.observacoesInternas}
-                      onChange={(e) => handleChange("observacoesInternas", e.target.value)}
-                      className="bg-[#0f1419] border-[#00D9FF]/30 text-white min-h-[100px]"
-                    />
-                  </div>
+              <Card className="mt-4 p-6 bg-background border-border space-y-4">
+                <div>
+                  <Label className="text-foreground">Solução Proposta</Label>
+                  <Textarea
+                    value={formData.proposedSolution}
+                    onChange={(e) => handleChange("proposedSolution", e.target.value)}
+                    rows={3}
+                    className="bg-background border-border text-foreground"
+                  />
+                </div>
+
+                <div>
+                  <Label className="text-foreground">Laudo Técnico</Label>
+                  <Textarea
+                    value={formData.technicalReport}
+                    onChange={(e) => handleChange("technicalReport", e.target.value)}
+                    rows={3}
+                    className="bg-background border-border text-foreground"
+                  />
+                </div>
+
+                <div>
+                  <Label className="text-foreground">Termos e Condições</Label>
+                  <Textarea
+                    value={formData.terms}
+                    onChange={(e) => handleChange("terms", e.target.value)}
+                    rows={3}
+                    className="bg-background border-border text-foreground"
+                  />
+                </div>
+
+                <div>
+                  <Label className="text-foreground">Observações Públicas</Label>
+                  <Textarea
+                    value={formData.publicNotes}
+                    onChange={(e) => handleChange("publicNotes", e.target.value)}
+                    rows={2}
+                    className="bg-background border-border text-foreground"
+                  />
+                </div>
+
+                <div>
+                  <Label className="text-foreground">Observações Internas</Label>
+                  <Textarea
+                    value={formData.internalNotes}
+                    onChange={(e) => handleChange("internalNotes", e.target.value)}
+                    rows={2}
+                    className="bg-background border-border text-foreground"
+                  />
                 </div>
               </Card>
             )}
           </div>
 
           {/* BOTÕES DE AÇÃO */}
-          <div className="flex gap-4 justify-end">
-            <Button
+          <div className="flex gap-4">
+            <button
+              type="button"
               onClick={() => navigate("/os/list")}
-              variant="outline"
-              className="border-[#00D9FF]/30 text-[#00D9FF] hover:bg-[#00D9FF]/10"
+              className="flex-1 px-6 py-2 bg-background border border-border text-foreground rounded-lg hover:bg-background/80 transition font-medium"
             >
               Cancelar
-            </Button>
-            <Button
-              onClick={handleSalvar}
-              className="bg-[#00D9FF] text-[#0f1419] hover:bg-[#00D9FF]/80"
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex-1 px-6 py-2 bg-accent text-background rounded-lg hover:bg-accent/90 transition font-medium disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              <Save className="w-4 h-4 mr-2" />
-              Salvar Ordem de Serviço
-            </Button>
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4" />
+                  Salvar Ordem
+                </>
+              )}
+            </button>
           </div>
-        </div>
+        </form>
       </div>
     </Layout>
   );

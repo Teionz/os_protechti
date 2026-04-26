@@ -1,238 +1,225 @@
-import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import Layout from "@/components/Layout";
-import { Plus, Search, Eye, Edit, Trash2, Download } from "lucide-react";
+import { Plus, Search, Eye, Edit, Trash2, Download, Loader2 } from "lucide-react";
 import { useLocation } from "wouter";
 import { useState } from "react";
 import { toast } from "sonner";
+import { trpc } from "@/lib/trpc";
 
 /**
  * QuotationList - Listagem de Orçamentos
- * Design: Dark Tech Professional
- * Funcionalidades: Busca, filtros, ações (visualizar, editar, deletar, converter em OS)
+ * Design: Dark Tech Professional com integração tRPC
  */
 export default function QuotationList() {
   const [, navigate] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("TODOS");
+  const [statusFilter, setStatusFilter] = useState("all");
 
-  // Dados de exemplo
-  const [quotations] = useState([
-    {
-      id: 1,
-      numero: "ORC-001",
-      cliente: "João Silva",
-      data: "2026-03-01",
-      validade: "2026-03-15",
-      total: 1500.0,
-      status: "PENDENTE",
-      itens: 3,
-    },
-    {
-      id: 2,
-      numero: "ORC-002",
-      cliente: "Maria Santos",
-      data: "2026-02-28",
-      validade: "2026-03-14",
-      total: 2800.0,
-      status: "APROVADO",
-      itens: 5,
-    },
-    {
-      id: 3,
-      numero: "ORC-003",
-      cliente: "Carlos Oliveira",
-      data: "2026-02-25",
-      validade: "2026-03-11",
-      total: 950.0,
-      status: "REJEITADO",
-      itens: 2,
-    },
-    {
-      id: 4,
-      numero: "ORC-004",
-      cliente: "Ana Costa",
-      data: "2026-02-20",
-      validade: "2026-03-06",
-      total: 3200.0,
-      status: "CONVERTIDO",
-      itens: 4,
-    },
-    {
-      id: 5,
-      numero: "ORC-005",
-      cliente: "ProTech Ltda",
-      data: "2026-03-02",
-      validade: "2026-03-16",
-      total: 5600.0,
-      status: "PENDENTE",
-      itens: 8,
-    },
-  ]);
+  // Buscar dados do banco
+  const { data: quotations = [], isLoading, refetch } = trpc.quotations.list.useQuery();
 
-  const filteredQuotations = quotations.filter((quotation) => {
+  // Mutation para deletar
+  const deleteQuotationMutation = trpc.quotations.delete.useMutation({
+    onSuccess: () => {
+      toast.success("Orçamento deletado com sucesso!");
+      refetch();
+    },
+    onError: (error) => {
+      toast.error(`Erro ao deletar: ${error.message}`);
+    },
+  });
+
+  // Filtrar orçamentos
+  const filteredQuotations = quotations.filter((quotation: any) => {
     const matchesSearch =
-      quotation.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      quotation.cliente.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === "TODOS" || quotation.status === statusFilter;
+      quotation.quotationNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      quotation.client?.name?.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesStatus = statusFilter === "all" || quotation.status === statusFilter;
+
     return matchesSearch && matchesStatus;
   });
 
-  const handleDelete = (id: number) => {
-    toast.success(`Orçamento #${id} deletado com sucesso!`);
-  };
-
-  const handleEdit = (id: number) => {
-    navigate(`/quotations/edit/${id}`);
-  };
-
-  const handleView = (id: number) => {
-    navigate(`/quotations/${id}`);
-  };
-
-  const handleConvert = (id: number) => {
-    toast.success(`Orçamento #${id} convertido em Ordem de Serviço!`);
-    setTimeout(() => navigate("/os/list"), 1500);
+  // Estatísticas
+  const stats = {
+    total: quotations.length,
+    pending: quotations.filter((q: any) => q.status === "pending").length,
+    approved: quotations.filter((q: any) => q.status === "approved").length,
+    totalValue: quotations.reduce((sum: number, q: any) => sum + (Number(q.total) || 0), 0),
   };
 
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
-      PENDENTE: "bg-yellow-500/20 text-yellow-400",
-      APROVADO: "bg-green-500/20 text-green-400",
-      REJEITADO: "bg-red-500/20 text-red-400",
-      CONVERTIDO: "bg-blue-500/20 text-blue-400",
+      pending: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
+      approved: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
+      rejected: "bg-red-500/20 text-red-400 border-red-500/30",
+      converted: "bg-blue-500/20 text-blue-400 border-blue-500/30",
     };
-    return colors[status] || "bg-gray-500/20 text-gray-400";
+    return colors[status] || "bg-gray-500/20 text-gray-400 border-gray-500/30";
   };
 
   const getStatusLabel = (status: string) => {
     const labels: Record<string, string> = {
-      PENDENTE: "Pendente",
-      APROVADO: "Aprovado",
-      REJEITADO: "Rejeitado",
-      CONVERTIDO: "Convertido",
+      pending: "Pendente",
+      approved: "Aprovado",
+      rejected: "Rejeitado",
+      converted: "Convertido",
     };
     return labels[status] || status;
   };
 
-  const totalValue = filteredQuotations.reduce((acc, q) => acc + q.total, 0);
+  const handleDelete = (id: number) => {
+    if (window.confirm("Tem certeza que deseja deletar este orçamento?")) {
+      deleteQuotationMutation.mutate(id);
+    }
+  };
+
+  const handleConvert = (id: number) => {
+    const quotation = quotations.find((q: any) => q.id === id);
+    if (quotation) {
+      // Navegar para criar nova OS com dados do orçamento
+      navigate(`/os/new?quotationId=${id}`);
+      toast.success("Orçamento convertido em Ordem de Serviço!");
+    }
+  };
 
   return (
     <Layout>
       <div className="container py-8">
-        {/* HEADER */}
-        <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        {/* Page Title */}
+        <div className="mb-8 flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-[#00D9FF] mb-2">Orçamentos</h1>
-            <p className="text-gray-400">Gerenciar orçamentos de produtos e serviços</p>
+            <h1 className="text-3xl font-bold text-foreground mb-2">Orçamentos</h1>
+            <p className="text-muted-foreground">Visualize e gerencie todos os seus orçamentos</p>
           </div>
           <Button
             onClick={() => navigate("/quotations/new")}
-            className="bg-[#00D9FF] text-[#0f1419] hover:bg-[#00D9FF]/80"
+            className="bg-accent text-background hover:bg-accent/90 gap-2"
           >
-            <Plus className="w-4 h-4 mr-2" />
+            <Plus className="w-4 h-4" />
             Novo Orçamento
           </Button>
         </div>
 
-        {/* CARDS DE ESTATÍSTICAS */}
+        {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <Card className="p-6 bg-[#1a1f2e] border-[#00D9FF]/20">
-            <div className="text-gray-400 text-sm mb-2">Total de Orçamentos</div>
-            <div className="text-3xl font-bold text-[#00D9FF]">{quotations.length}</div>
+          <Card className="card-float p-4">
+            <div className="text-sm text-muted-foreground mb-1">Total de Orçamentos</div>
+            <div className="text-2xl font-bold text-foreground">{stats.total}</div>
           </Card>
-          <Card className="p-6 bg-[#1a1f2e] border-[#00D9FF]/20">
-            <div className="text-gray-400 text-sm mb-2">Pendentes</div>
-            <div className="text-3xl font-bold text-yellow-400">{quotations.filter((q) => q.status === "PENDENTE").length}</div>
+          <Card className="card-float p-4">
+            <div className="text-sm text-muted-foreground mb-1">Pendentes</div>
+            <div className="text-2xl font-bold text-yellow-400">{stats.pending}</div>
           </Card>
-          <Card className="p-6 bg-[#1a1f2e] border-[#00D9FF]/20">
-            <div className="text-gray-400 text-sm mb-2">Aprovados</div>
-            <div className="text-3xl font-bold text-green-400">{quotations.filter((q) => q.status === "APROVADO").length}</div>
+          <Card className="card-float p-4">
+            <div className="text-sm text-muted-foreground mb-1">Aprovados</div>
+            <div className="text-2xl font-bold text-emerald-400">{stats.approved}</div>
           </Card>
-          <Card className="p-6 bg-[#1a1f2e] border-[#00D9FF]/20">
-            <div className="text-gray-400 text-sm mb-2">Valor Total</div>
-            <div className="text-3xl font-bold text-[#00D9FF]">R$ {totalValue.toFixed(2)}</div>
+          <Card className="card-float p-4">
+            <div className="text-sm text-muted-foreground mb-1">Valor Total</div>
+            <div className="text-2xl font-bold text-accent">R$ {stats.totalValue.toFixed(2)}</div>
           </Card>
         </div>
 
-        {/* FILTROS E BUSCA */}
-        <Card className="p-6 bg-[#1a1f2e] border-[#00D9FF]/20 mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-3 w-4 h-4 text-[#00D9FF]" />
+        {/* Search and Filter */}
+        <Card className="card-float p-6 mb-6">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1 flex items-center gap-2">
+              <Search className="w-5 h-5 text-muted-foreground" />
               <Input
+                type="text"
                 placeholder="Buscar por número ou cliente..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 bg-[#0f1419] border-[#00D9FF]/30 text-white"
+                className="flex-1 bg-background border-border"
               />
             </div>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-4 py-2 bg-[#0f1419] border border-[#00D9FF]/30 text-white rounded-lg focus:outline-none focus:border-[#00D9FF]"
+              className="px-4 py-2 bg-background border border-border rounded-lg text-foreground"
             >
-              <option value="TODOS">Todos os Status</option>
-              <option value="PENDENTE">Pendente</option>
-              <option value="APROVADO">Aprovado</option>
-              <option value="REJEITADO">Rejeitado</option>
-              <option value="CONVERTIDO">Convertido</option>
+              <option value="all">Todos os Status</option>
+              <option value="pending">Pendente</option>
+              <option value="approved">Aprovado</option>
+              <option value="rejected">Rejeitado</option>
+              <option value="converted">Convertido</option>
             </select>
           </div>
         </Card>
 
-        {/* TABELA DE ORÇAMENTOS */}
-        <Card className="bg-[#1a1f2e] border-[#00D9FF]/20 overflow-hidden">
+        {/* Results Info */}
+        <div className="mb-4 text-sm text-muted-foreground">
+          Mostrando {filteredQuotations.length} de {quotations.length} orçamentos
+        </div>
+
+        {/* Table */}
+        {isLoading ? (
+          <div className="flex items-center justify-center h-64">
+            <Loader2 className="w-8 h-8 animate-spin text-accent" />
+          </div>
+        ) : filteredQuotations.length === 0 ? (
+          <Card className="card-float p-12 text-center">
+            <p className="text-muted-foreground mb-4">Nenhum orçamento encontrado</p>
+            <Button
+              onClick={() => navigate("/quotations/new")}
+              className="bg-accent text-background hover:bg-accent/90"
+            >
+              Criar Primeiro Orçamento
+            </Button>
+          </Card>
+        ) : (
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-[#00D9FF]/20 bg-[#0f1419]">
-                  <th className="text-left p-4 text-[#00D9FF] font-bold">Número</th>
-                  <th className="text-left p-4 text-[#00D9FF] font-bold">Cliente</th>
-                  <th className="text-center p-4 text-[#00D9FF] font-bold">Data</th>
-                  <th className="text-center p-4 text-[#00D9FF] font-bold">Validade</th>
-                  <th className="text-center p-4 text-[#00D9FF] font-bold">Itens</th>
-                  <th className="text-right p-4 text-[#00D9FF] font-bold">Total</th>
-                  <th className="text-center p-4 text-[#00D9FF] font-bold">Status</th>
-                  <th className="text-center p-4 text-[#00D9FF] font-bold">Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredQuotations.length > 0 ? (
-                  filteredQuotations.map((quotation) => (
-                    <tr key={quotation.id} className="border-b border-[#00D9FF]/10 hover:bg-[#0f1419]/50 transition">
-                      <td className="p-4 text-[#00D9FF] font-semibold">{quotation.numero}</td>
-                      <td className="p-4 text-white">{quotation.cliente}</td>
-                      <td className="p-4 text-center text-gray-400">{new Date(quotation.data).toLocaleDateString("pt-BR")}</td>
-                      <td className="p-4 text-center text-gray-400">{new Date(quotation.validade).toLocaleDateString("pt-BR")}</td>
-                      <td className="p-4 text-center text-gray-400">{quotation.itens}</td>
-                      <td className="p-4 text-right text-[#00D9FF] font-semibold">R$ {quotation.total.toFixed(2)}</td>
-                      <td className="p-4 text-center">
-                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(quotation.status)}`}>
+            <Card className="card-float">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left p-4 text-foreground font-semibold">Número</th>
+                    <th className="text-left p-4 text-foreground font-semibold">Cliente</th>
+                    <th className="text-left p-4 text-foreground font-semibold">Data</th>
+                    <th className="text-left p-4 text-foreground font-semibold">Status</th>
+                    <th className="text-right p-4 text-foreground font-semibold">Valor</th>
+                    <th className="text-center p-4 text-foreground font-semibold">Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredQuotations.map((quotation: any) => (
+                    <tr key={quotation.id} className="border-b border-border/50 hover:bg-background/50 transition">
+                      <td className="p-4 text-foreground font-medium">{quotation.quotationNumber}</td>
+                      <td className="p-4 text-foreground">{quotation.client?.name || "—"}</td>
+                      <td className="p-4 text-foreground">
+                        {quotation.createdAt ? new Date(quotation.createdAt).toLocaleDateString("pt-BR") : "—"}
+                      </td>
+                      <td className="p-4">
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(quotation.status)}`}>
                           {getStatusLabel(quotation.status)}
                         </span>
                       </td>
+                      <td className="p-4 text-right text-accent font-semibold">
+                        R$ {Number(quotation.total || 0).toFixed(2)}
+                      </td>
                       <td className="p-4 text-center">
-                        <div className="flex justify-center gap-2">
+                        <div className="flex items-center justify-center gap-2">
                           <button
-                            onClick={() => handleView(quotation.id)}
-                            className="p-2 hover:bg-[#00D9FF]/10 rounded-lg transition text-[#00D9FF]"
+                            onClick={() => navigate(`/quotations/${quotation.id}`)}
+                            className="p-2 text-blue-400 hover:bg-blue-500/10 rounded-lg transition"
                             title="Visualizar"
                           >
                             <Eye className="w-4 h-4" />
                           </button>
                           <button
-                            onClick={() => handleEdit(quotation.id)}
-                            className="p-2 hover:bg-[#00D9FF]/10 rounded-lg transition text-[#00D9FF]"
+                            onClick={() => navigate(`/quotations/edit/${quotation.id}`)}
+                            className="p-2 text-amber-400 hover:bg-amber-500/10 rounded-lg transition"
                             title="Editar"
                           >
                             <Edit className="w-4 h-4" />
                           </button>
-                          {quotation.status === "APROVADO" && (
+                          {quotation.status === "approved" && (
                             <button
                               onClick={() => handleConvert(quotation.id)}
-                              className="p-2 hover:bg-green-500/10 rounded-lg transition text-green-400"
+                              className="p-2 text-purple-400 hover:bg-purple-500/10 rounded-lg transition"
                               title="Converter em OS"
                             >
                               <Download className="w-4 h-4" />
@@ -240,7 +227,7 @@ export default function QuotationList() {
                           )}
                           <button
                             onClick={() => handleDelete(quotation.id)}
-                            className="p-2 hover:bg-red-500/10 rounded-lg transition text-red-400"
+                            className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition"
                             title="Deletar"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -248,18 +235,12 @@ export default function QuotationList() {
                         </div>
                       </td>
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={8} className="p-8 text-center text-gray-400">
-                      Nenhum orçamento encontrado
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                  ))}
+                </tbody>
+              </table>
+            </Card>
           </div>
-        </Card>
+        )}
       </div>
     </Layout>
   );
