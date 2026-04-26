@@ -398,9 +398,18 @@ export async function getEquipmentsByClientId(clientId: number) {
 export async function createEquipment(data: InsertEquipment) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.insert(equipments).values(data);
-  const id = (result as any).insertId;
-  return { id, ...data };
+  try {
+    const result = await db.insert(equipments).values(data);
+    const id = (result as any).insertId || (result as any)[0]?.id;
+    console.log('[createEquipment] Resultado:', { result, id, data });
+    if (!id) {
+      throw new Error('Falha ao obter ID do equipamento inserido');
+    }
+    return { id, ...data };
+  } catch (error) {
+    console.error('[createEquipment] Erro:', error, { data });
+    throw error;
+  }
 }
 
 export async function updateEquipment(id: number, data: Partial<InsertEquipment>) {

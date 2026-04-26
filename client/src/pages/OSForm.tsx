@@ -302,7 +302,9 @@ export default function OSForm() {
 
     try {
       // 0. Salvar equipamento PRIMEIRO (antes de criar a OS)
-      if (formData.equipmentName) {
+      // Verificar se QUALQUER campo de equipamento foi preenchido
+      const hasEquipmentData = formData.equipmentName || formData.equipmentBrand || formData.equipmentModel || formData.equipmentSerial || formData.equipmentTag;
+      if (hasEquipmentData) {
         try {
           // Verificar se equipamento com essa tag já existe
           let equipmentExists = false;
@@ -630,8 +632,9 @@ export default function OSForm() {
                   <Input
                     type="text"
                     placeholder="Ex: Notebook, Desktop, Impressora"
-                    value={equipmentSearch}
+                    value={formData.equipmentName}
                     onChange={(e) => {
+                      handleChange("equipmentName", e.target.value);
                       setEquipmentSearch(e.target.value);
                       setShowEquipmentSuggestions(true);
                     }}
@@ -662,7 +665,7 @@ export default function OSForm() {
                     value={formData.equipmentBrand}
                     onChange={(e) => handleChange("equipmentBrand", e.target.value)}
                     className="mt-1 bg-background border-border"
-                    disabled={!!(equipmentSearch && clientEquipments.length > 0)}
+                    disabled={false}
                   />
                 </div>
                 <div>
