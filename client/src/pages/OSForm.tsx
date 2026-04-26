@@ -120,18 +120,18 @@ export default function OSForm() {
           .map((item: any) => ({
             id: item.id,
             name: item.description,
-            quantity: item.quantity,
-            unitPrice: item.unitPrice,
-            total: item.total,
+            quantity: parseInt(item.quantity) || 1,
+            price: parseFloat(item.unitPrice) || 0,
+            total: parseFloat(item.total) || 0,
           }));
         const productsFromOrder = existingOrderItems
           .filter((item: any) => item.type === "product")
           .map((item: any) => ({
             id: item.id,
             name: item.description,
-            quantity: item.quantity,
-            unitPrice: item.unitPrice,
-            total: item.total,
+            quantity: parseInt(item.quantity) || 1,
+            price: parseFloat(item.unitPrice) || 0,
+            total: parseFloat(item.total) || 0,
           }));
         setOsServices(servicesFromOrder);
         setOsProducts(productsFromOrder);
