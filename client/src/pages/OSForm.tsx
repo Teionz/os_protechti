@@ -83,7 +83,8 @@ export default function OSForm() {
   const [productSearch, setProductSearch] = useState("");
 
 
-  // Mutations - declaradas no topo do componente
+  // Mutations e utils - declaradas no topo do componente
+  const utils = trpc.useUtils();
   const createOrderMutation = trpc.orders.create.useMutation();
   const updateOrderMutation = trpc.orders.update.useMutation();
   const createOrderItemMutation = trpc.orderItems.create.useMutation();
@@ -386,7 +387,6 @@ export default function OSForm() {
       }
 
       // Invalidar queries para garantir dados atualizados
-      const utils = trpc.useUtils();
       await utils.orderItems.getByOrderId.invalidate(order.id);
       await utils.orders.get.invalidate(order.id);
       await utils.orders.list.invalidate();
