@@ -60,7 +60,7 @@ export default function OSForm() {
     orderNumber: orderNumber,
     status: "budgeting",
     priority: "medium",
-    channel: "PRESENCIAL",
+
     seller: "",
     technician: "",
     // Equipamento
@@ -170,7 +170,7 @@ export default function OSForm() {
         orderNumber: o.orderNumber,
         status: o.status || "budgeting",
         priority: o.priority || "medium",
-        channel: o.channel || "PRESENCIAL",
+
         seller: o.seller || "",
         technician: o.technician || "",
         equipmentName: o.equipmentName || "",
@@ -346,7 +346,7 @@ export default function OSForm() {
         clientId: parseInt(formData.clientId),
         status: formData.status as any,
         priority: formData.priority as any,
-        channel: formData.channel,
+
         seller: formData.seller,
         technician: formData.technician,
         equipmentName: formData.equipmentName,
@@ -557,15 +557,7 @@ export default function OSForm() {
                     placeholder="Nome do vendedor"
                   />
                 </div>
-                <div>
-                  <Label className="text-foreground">Canal</Label>
-                  <Input
-                    type="text"
-                    value={formData.channel}
-                    onChange={(e) => handleChange("channel", e.target.value)}
-                    className="mt-1 bg-background border-border"
-                  />
-                </div>
+
               </div>
             )}
           </Card>

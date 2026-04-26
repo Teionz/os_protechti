@@ -144,7 +144,7 @@ export const appRouter = router({
         clientId: z.number(),
         status: z.enum(["budgeting", "awaiting_approval", "in_progress", "awaiting_pickup", "completed"]).optional(),
         priority: z.enum(["low", "medium", "high", "urgent"]).optional(),
-        channel: z.string().optional(),
+
         seller: z.string().optional(),
         technician: z.string().optional(),
         equipmentName: z.string().optional(),
@@ -187,7 +187,7 @@ export const appRouter = router({
           clientId: z.number().optional(),
           status: z.enum(["budgeting", "awaiting_approval", "in_progress", "awaiting_pickup", "completed"]).optional(),
           priority: z.enum(["low", "medium", "high", "urgent"]).optional(),
-          channel: z.string().optional(),
+  
           seller: z.string().optional(),
           technician: z.string().optional(),
           equipmentName: z.string().optional(),
