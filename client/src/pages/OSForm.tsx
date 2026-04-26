@@ -86,6 +86,7 @@ export default function OSForm() {
   const createOrderMutation = trpc.orders.create.useMutation();
   const updateOrderMutation = trpc.orders.update.useMutation();
   const createOrderItemMutation = trpc.orderItems.create.useMutation();
+  const deleteOrderItemMutation = trpc.orderItems.delete.useMutation();
   const createEquipmentMutation = trpc.equipments.create.useMutation();
 
   // Carregar dados da OS se estiver editando
@@ -192,7 +193,17 @@ export default function OSForm() {
     setServiceSearch("");
   };
 
-  const handleRemoveService = (id: number) => {
+  const handleRemoveService = async (id: number) => {
+    // Se for um item existente (vindo do banco), deletar do banco
+    if (isEditing && id < 1000000000000) {
+      try {
+        await deleteOrderItemMutation.mutateAsync(id);
+      } catch (error) {
+        console.error("Erro ao deletar serviço:", error);
+        toast.error("Erro ao deletar serviço");
+        return;
+      }
+    }
     setOsServices(osServices.filter((s) => s.id !== id));
   };
 
@@ -227,7 +238,17 @@ export default function OSForm() {
     setProductSearch("");
   };
 
-  const handleRemoveProduct = (id: number) => {
+  const handleRemoveProduct = async (id: number) => {
+    // Se for um item existente (vindo do banco), deletar do banco
+    if (isEditing && id < 1000000000000) {
+      try {
+        await deleteOrderItemMutation.mutateAsync(id);
+      } catch (error) {
+        console.error("Erro ao deletar produto:", error);
+        toast.error("Erro ao deletar produto");
+        return;
+      }
+    }
     setOsProducts(osProducts.filter((p) => p.id !== id));
   };
 
