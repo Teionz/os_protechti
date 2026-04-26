@@ -66,6 +66,7 @@ export default function OSForm() {
     equipmentBrand: "",
     equipmentModel: "",
     equipmentSerial: "",
+    equipmentTag: "",
     equipmentCondition: "",
     reportedDefects: "",
     accessories: "",
@@ -296,6 +297,7 @@ export default function OSForm() {
             equipmentBrand: formData.equipmentBrand,
             equipmentModel: formData.equipmentModel,
             equipmentSerial: formData.equipmentSerial,
+            equipmentTag: formData.equipmentTag,
             equipmentCondition: formData.equipmentCondition,
             reportedDefects: formData.reportedDefects,
             accessories: formData.accessories,
@@ -597,6 +599,16 @@ export default function OSForm() {
                     placeholder="Número de série"
                     value={formData.equipmentSerial}
                     onChange={(e) => handleChange("equipmentSerial", e.target.value)}
+                    className="mt-1 bg-background border-border"
+                  />
+                </div>
+                <div>
+                  <Label className="text-foreground">Etiqueta de Controle</Label>
+                  <Input
+                    type="text"
+                    placeholder="Ex: EQUIP-001, TAG-2024-001"
+                    value={formData.equipmentTag}
+                    onChange={(e) => handleChange("equipmentTag", e.target.value)}
                     className="mt-1 bg-background border-border"
                   />
                 </div>

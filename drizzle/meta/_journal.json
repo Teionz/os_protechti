@@ -36,6 +36,13 @@
       "when": 1777205545699,
       "tag": "0004_shallow_komodo",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1777207009573,
+      "tag": "0005_mean_mordo",
+      "breakpoints": true
     }
   ]
 }

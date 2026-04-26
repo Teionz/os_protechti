@@ -126,6 +126,7 @@ export const orders = mysqlTable("orders", {
   equipmentBrand: varchar("equipmentBrand", { length: 100 }),
   equipmentModel: varchar("equipmentModel", { length: 100 }),
   equipmentSerial: varchar("equipmentSerial", { length: 100 }),
+  equipmentTag: varchar("equipmentTag", { length: 50 }),
   equipmentCondition: text("equipmentCondition"),
   reportedDefects: text("reportedDefects"),
   accessories: text("accessories"),
