@@ -180,11 +180,14 @@ export default function OSList() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredOrders.map((order: any) => (
-                    <tr key={order.id} className="border-b border-border/50 hover:bg-background/50 transition">
+                  {filteredOrders.map((order: any) => {
+                    // Exibir equipmentName se existir, senão mostrar equipmentTag
+                    const displayEquipment = order.equipmentName || order.equipmentTag || "—";
+                    return (
+                      <tr key={order.id} className="border-b border-border/50 hover:bg-background/50 transition">
                       <td className="p-4 text-foreground font-medium">{order.orderNumber}</td>
                       <td className="p-4 text-foreground">{order.client?.name || "—"}</td>
-                      <td className="p-4 text-foreground">{order.equipmentName || "—"}</td>
+                      <td className="p-4 text-foreground">{displayEquipment}</td>
                       <td className="p-4">
                         <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(order.status)}`}>
                           {getStatusLabel(order.status)}
@@ -219,7 +222,8 @@ export default function OSList() {
                         </div>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </Card>
