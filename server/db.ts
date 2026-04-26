@@ -246,7 +246,18 @@ export async function createOrder(data: InsertOrder) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   const result = await db.insert(orders).values(data);
-  const id = (result as any).insertId;
+  let id = (result as any).insertId;
+  
+  // Se insertId não existir, tentar obter via lastInsertId
+  if (!id) {
+    const lastInsertResult = await db.execute("SELECT LAST_INSERT_ID() as id");
+    id = (lastInsertResult as any)?.[0]?.[0]?.id;
+  }
+  
+  if (!id) {
+    throw new Error("Falha ao obter ID da ordem inserida");
+  }
+  
   return { id, ...data };
 }
 

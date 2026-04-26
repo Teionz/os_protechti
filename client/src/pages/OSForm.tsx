@@ -361,7 +361,8 @@ export default function OSForm() {
       }
 
       if (!order?.id) {
-        throw new Error("Falha ao salvar ordem de serviço");
+        console.error("Order retornado sem ID:", order);
+        throw new Error(`Falha ao salvar ordem de serviço. Resposta: ${JSON.stringify(order)}`);
       }
 
       // 2. Se estiver editando, deletar todos os orderItems antigos primeiro
@@ -419,7 +420,9 @@ export default function OSForm() {
       navigate("/os/list");
     } catch (error: any) {
       console.error("Erro ao salvar:", error);
-      toast.error(`Erro ao salvar ordem: ${error.message}`);
+      const errorMsg = error?.message || JSON.stringify(error);
+      console.error("Detalhes do erro:", errorMsg);
+      toast.error(`Erro ao salvar ordem: ${errorMsg}`);
     } finally {
       setLoading(false);
     }
