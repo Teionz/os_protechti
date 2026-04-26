@@ -107,7 +107,8 @@ export async function createClient(data: InsertClient) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   const result = await db.insert(clients).values(data);
-  return result;
+  const id = (result as any).insertId;
+  return { id, ...data };
 }
 
 export async function updateClient(id: number, data: Partial<InsertClient>) {
@@ -139,7 +140,9 @@ export async function getProductById(id: number) {
 export async function createProduct(data: InsertProduct) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  return db.insert(products).values(data);
+  const result = await db.insert(products).values(data);
+  const id = (result as any).insertId;
+  return { id, ...data };
 }
 
 export async function updateProduct(id: number, data: Partial<InsertProduct>) {
@@ -171,7 +174,9 @@ export async function getServiceById(id: number) {
 export async function createService(data: InsertService) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  return db.insert(services).values(data);
+  const result = await db.insert(services).values(data);
+  const id = (result as any).insertId;
+  return { id, ...data };
 }
 
 export async function updateService(id: number, data: Partial<InsertService>) {
@@ -203,7 +208,9 @@ export async function getOrderById(id: number) {
 export async function createOrder(data: InsertOrder) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  return db.insert(orders).values(data);
+  const result = await db.insert(orders).values(data);
+  const id = (result as any).insertId;
+  return { id, ...data };
 }
 
 export async function updateOrder(id: number, data: Partial<InsertOrder>) {
@@ -235,7 +242,9 @@ export async function getQuotationById(id: number) {
 export async function createQuotation(data: InsertQuotation) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  return db.insert(quotations).values(data);
+  const result = await db.insert(quotations).values(data);
+  const id = (result as any).insertId;
+  return { id, ...data };
 }
 
 export async function updateQuotation(id: number, data: Partial<InsertQuotation>) {
@@ -267,7 +276,9 @@ export async function getSaleById(id: number) {
 export async function createSale(data: InsertSale) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  return db.insert(sales).values(data);
+  const result = await db.insert(sales).values(data);
+  const id = (result as any).insertId;
+  return { id, ...data };
 }
 
 export async function updateSale(id: number, data: Partial<InsertSale>) {
@@ -299,7 +310,9 @@ export async function getSupplierById(id: number) {
 export async function createSupplier(data: InsertSupplier) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  return db.insert(suppliers).values(data);
+  const result = await db.insert(suppliers).values(data);
+  const id = (result as any).insertId;
+  return { id, ...data };
 }
 
 export async function updateSupplier(id: number, data: Partial<InsertSupplier>) {

@@ -7,8 +7,8 @@ import { Button } from "@/components/ui/button";
 import { NewClientModal } from "@/components/NewClientModal";
 import Layout from "@/components/Layout";
 import { Save, Plus, Trash2, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
-import { useLocation } from "wouter";
-import { useState, useEffect } from "react";
+import { useLocation, useRoute } from "wouter";
+import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 
@@ -19,6 +19,8 @@ import { trpc } from "@/lib/trpc";
  */
 export default function OSForm() {
   const [, navigate] = useLocation();
+  const [match, params] = useRoute("/os/edit/:id");
+  const isEditing = match && params?.id;
   const [loading, setLoading] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     dadosGerais: true,
@@ -33,12 +35,24 @@ export default function OSForm() {
   const { data: clients = [], isLoading: clientsLoading, refetch: refetchClients } = trpc.clients.list.useQuery();
   const { data: services = [], isLoading: servicesLoading } = trpc.services.list.useQuery();
   const { data: products = [], isLoading: productsLoading } = trpc.products.list.useQuery();
+  const { data: existingOrder, isLoading: orderLoading } = trpc.orders.get.useQuery(
+    isEditing ? parseInt(params?.id as string) : undefined as any,
+    { enabled: !!isEditing }
+  );
 
-  const isLoadingData = clientsLoading || servicesLoading || productsLoading;
+  const isLoadingData = clientsLoading || servicesLoading || productsLoading || (isEditing && orderLoading);
+
+  // Gerar orderNumber uma única vez (ou usar existente se editando)
+  const orderNumber = useMemo(() => {
+    if (isEditing && existingOrder?.orderNumber) {
+      return existingOrder.orderNumber;
+    }
+    return `OS-${Date.now()}`;
+  }, [isEditing, existingOrder?.orderNumber]);
 
   const [formData, setFormData] = useState({
     clientId: "",
-    orderNumber: `OS-${Date.now()}`,
+    orderNumber: orderNumber,
     status: "budgeting",
     priority: "medium",
     channel: "PRESENCIAL",
@@ -64,53 +78,38 @@ export default function OSForm() {
   const [serviceSearch, setServiceSearch] = useState("");
   const [productSearch, setProductSearch] = useState("");
 
-  // Mutations
-  const createOrderMutation = trpc.orders.create.useMutation({
-    onSuccess: (order: any) => {
-      // Salvar itens de serviço
-      osServices.forEach((service) => {
-        trpc.orderItems.create.useMutation().mutate({
-          orderId: order.id,
-          type: "service",
-          description: service.name,
-          quantity: service.quantity,
-          unitPrice: service.price.toString(),
-          total: (service.quantity * service.price).toString(),
-        });
-      });
+  // Mutations - declaradas no topo do componente
+  const createOrderMutation = trpc.orders.create.useMutation();
+  const updateOrderMutation = trpc.orders.update.useMutation();
+  const createOrderItemMutation = trpc.orderItems.create.useMutation();
+  const createEquipmentMutation = trpc.equipments.create.useMutation();
 
-      // Salvar itens de produto
-      osProducts.forEach((product) => {
-        trpc.orderItems.create.useMutation().mutate({
-          orderId: order.id,
-          type: "product",
-          description: product.name,
-          quantity: product.quantity,
-          unitPrice: product.price.toString(),
-          total: (product.quantity * product.price).toString(),
-        });
-      });
-
-      // Salvar equipamento se houver dados
-      if (formData.equipmentName) {
-        trpc.equipments.create.useMutation().mutate({
-          clientId: parseInt(formData.clientId),
-          name: formData.equipmentName,
-          brand: formData.equipmentBrand,
-          model: formData.equipmentModel,
-          serial: formData.equipmentSerial,
-          category: "Equipamento de Serviço",
-          description: formData.equipmentCondition,
-        });
-      }
-
-      toast.success("Ordem de Serviço salva com sucesso!");
-      navigate("/os/list");
-    },
-    onError: (error) => {
-      toast.error(`Erro ao salvar ordem: ${error.message}`);
-    },
-  });
+  // Carregar dados da OS se estiver editando
+  useEffect(() => {
+    if (isEditing && existingOrder) {
+      setFormData({
+        clientId: existingOrder.clientId?.toString() || "",
+        orderNumber: existingOrder.orderNumber,
+        status: (existingOrder.status as any) || "budgeting",
+        priority: (existingOrder.priority as any) || "medium",
+        channel: existingOrder.channel,
+        seller: existingOrder.seller || "",
+        technician: existingOrder.technician || "",
+        equipmentName: existingOrder.equipmentName || "",
+        equipmentBrand: existingOrder.equipmentBrand || "",
+        equipmentModel: existingOrder.equipmentModel || "",
+        equipmentSerial: existingOrder.equipmentSerial || "",
+        equipmentCondition: existingOrder.equipmentCondition || "",
+        reportedDefects: existingOrder.reportedDefects || "",
+        accessories: existingOrder.accessories || "",
+        proposedSolution: existingOrder.proposedSolution || "",
+        technicalReport: existingOrder.technicalReport || "",
+        terms: existingOrder.terms || "",
+        publicNotes: existingOrder.publicNotes || "",
+        internalNotes: existingOrder.internalNotes || "",
+      } as any);
+    }
+  }, [isEditing, existingOrder]);
 
   const toggleSection = (section: string) => {
     setExpandedSections({
@@ -228,28 +227,108 @@ export default function OSForm() {
     setLoading(true);
 
     try {
-      await createOrderMutation.mutateAsync({
-        orderNumber: formData.orderNumber,
-        clientId: parseInt(formData.clientId),
-        status: formData.status as any,
-        priority: formData.priority as any,
-        channel: formData.channel,
-        seller: formData.seller,
-        technician: formData.technician,
-        equipmentName: formData.equipmentName,
-        equipmentBrand: formData.equipmentBrand,
-        equipmentModel: formData.equipmentModel,
-        equipmentSerial: formData.equipmentSerial,
-        equipmentCondition: formData.equipmentCondition,
-        reportedDefects: formData.reportedDefects,
-        accessories: formData.accessories,
-        proposedSolution: formData.proposedSolution,
-        technicalReport: formData.technicalReport,
-        terms: formData.terms,
-        publicNotes: formData.publicNotes,
-        internalNotes: formData.internalNotes,
-        total: total.toString(),
-      });
+      // 1. Criar ou Atualizar Ordem de Serviço
+      let order;
+      if (isEditing && existingOrder?.id) {
+        // Editar
+        await updateOrderMutation.mutateAsync({
+          id: existingOrder.id,
+          data: {
+            clientId: parseInt(formData.clientId),
+            status: formData.status as any,
+            priority: formData.priority as any,
+            channel: formData.channel,
+            seller: formData.seller,
+            technician: formData.technician,
+            equipmentName: formData.equipmentName,
+            equipmentBrand: formData.equipmentBrand,
+            equipmentModel: formData.equipmentModel,
+            equipmentSerial: formData.equipmentSerial,
+            equipmentCondition: formData.equipmentCondition,
+            reportedDefects: formData.reportedDefects,
+            accessories: formData.accessories,
+            proposedSolution: formData.proposedSolution,
+            technicalReport: formData.technicalReport,
+            terms: formData.terms,
+            publicNotes: formData.publicNotes,
+            internalNotes: formData.internalNotes,
+            total: total.toString(),
+          },
+        });
+        order = { id: existingOrder.id };
+        toast.success("Ordem de Serviço atualizada com sucesso!");
+      } else {
+        // Criar
+        order = await createOrderMutation.mutateAsync({
+          orderNumber: formData.orderNumber,
+          clientId: parseInt(formData.clientId),
+          status: formData.status as any,
+          priority: formData.priority as any,
+          channel: formData.channel,
+          seller: formData.seller,
+          technician: formData.technician,
+          equipmentName: formData.equipmentName,
+          equipmentBrand: formData.equipmentBrand,
+          equipmentModel: formData.equipmentModel,
+          equipmentSerial: formData.equipmentSerial,
+          equipmentCondition: formData.equipmentCondition,
+          reportedDefects: formData.reportedDefects,
+          accessories: formData.accessories,
+          proposedSolution: formData.proposedSolution,
+          technicalReport: formData.technicalReport,
+          terms: formData.terms,
+          publicNotes: formData.publicNotes,
+          internalNotes: formData.internalNotes,
+          total: total.toString(),
+        });
+        toast.success("Ordem de Serviço criada com sucesso!");
+      }
+
+      if (!order?.id) {
+        throw new Error("Falha ao salvar ordem de serviço");
+      }
+
+      // 2. Salvar itens de serviço
+      for (const service of osServices) {
+        await createOrderItemMutation.mutateAsync({
+          orderId: order.id,
+          type: "service",
+          description: service.name,
+          quantity: service.quantity,
+          unitPrice: service.price.toString(),
+          total: (service.quantity * service.price).toString(),
+        });
+      }
+
+      // 3. Salvar itens de produto
+      for (const product of osProducts) {
+        await createOrderItemMutation.mutateAsync({
+          orderId: order.id,
+          type: "product",
+          description: product.name,
+          quantity: product.quantity,
+          unitPrice: product.price.toString(),
+          total: (product.quantity * product.price).toString(),
+        });
+      }
+
+      // 4. Salvar equipamento se houver dados
+      if (formData.equipmentName) {
+        await createEquipmentMutation.mutateAsync({
+          clientId: parseInt(formData.clientId),
+          name: formData.equipmentName,
+          brand: formData.equipmentBrand,
+          model: formData.equipmentModel,
+          serial: formData.equipmentSerial,
+          category: "Equipamento de Serviço",
+          description: formData.equipmentCondition,
+        });
+      }
+
+      navigate("/os/list");
+    } catch (error: any) {
+      console.error("Erro ao salvar:", error);
+      toast.error(`Erro ao salvar ordem: ${error.message}`);
     } finally {
       setLoading(false);
     }
