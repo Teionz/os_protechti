@@ -301,6 +301,49 @@ export default function OSForm() {
     setLoading(true);
 
     try {
+      // 0. Salvar equipamento PRIMEIRO (antes de criar a OS)
+      if (formData.equipmentName) {
+        try {
+          // Verificar se equipamento com essa tag já existe
+          let equipmentExists = false;
+          if (formData.equipmentTag) {
+            const existingEquipments = await utils.equipments.searchByClientId.fetch({
+              clientId: parseInt(formData.clientId),
+              query: formData.equipmentTag,
+            });
+            equipmentExists = existingEquipments.some((e: any) => e.equipmentTag === formData.equipmentTag);
+          }
+
+          // Só criar novo equipamento se não existir
+          if (!equipmentExists) {
+            const equipmentResult = await createEquipmentMutation.mutateAsync({
+              clientId: parseInt(formData.clientId),
+              name: formData.equipmentName,
+              brand: formData.equipmentBrand,
+              model: formData.equipmentModel,
+              serial: formData.equipmentSerial,
+              equipmentTag: formData.equipmentTag,
+              category: "Equipamento de Serviço",
+              description: formData.equipmentCondition,
+            });
+            
+            if (!equipmentResult?.id) {
+              console.warn("Equipamento criado mas sem ID retornado:", equipmentResult);
+              toast.error("Aviso: Equipamento pode não ter sido salvo corretamente");
+            } else {
+              console.log("Equipamento criado com sucesso. ID:", equipmentResult.id);
+              toast.success("Equipamento salvo com sucesso!");
+            }
+          } else {
+            console.log("Equipamento com essa tag já existe, não criando duplicata");
+          }
+        } catch (error) {
+          console.error("Erro ao salvar equipamento:", error);
+          toast.error(`Erro ao salvar equipamento: ${(error as any)?.message || 'Erro desconhecido'}`);
+          throw error; // Parar o fluxo se equipamento não salvar
+        }
+      }
+
       // 1. Criar ou Atualizar Ordem de Serviço
       let order;
       if (isEditing && existingOrder?.id) {
@@ -398,26 +441,20 @@ export default function OSForm() {
         });
       }
 
-      // 5. Salvar equipamento se houver dados
-      if (formData.equipmentName) {
-        await createEquipmentMutation.mutateAsync({
-          clientId: parseInt(formData.clientId),
-          name: formData.equipmentName,
-          brand: formData.equipmentBrand,
-          model: formData.equipmentModel,
-          serial: formData.equipmentSerial,
-          equipmentTag: formData.equipmentTag,
-          category: "Equipamento de Serviço",
-          description: formData.equipmentCondition,
-        });
-      }
-
       // Invalidar queries para garantir dados atualizados
       await utils.orderItems.getByOrderId.invalidate(order.id);
       await utils.orders.get.invalidate(order.id);
       await utils.orders.list.invalidate();
+      await utils.equipments.list.invalidate();
+      await utils.equipments.getByClientId.invalidate(parseInt(formData.clientId));
+      await utils.equipments.searchByClientId.invalidate({
+        clientId: parseInt(formData.clientId),
+        query: formData.equipmentTag || "",
+      });
 
+      toast.success("Ordem de Serviço salva com sucesso!");
       navigate("/os/list");
+
     } catch (error: any) {
       console.error("Erro ao salvar:", error);
       const errorMsg = error?.message || JSON.stringify(error);

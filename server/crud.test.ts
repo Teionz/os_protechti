@@ -147,3 +147,67 @@ describe("CRUD Operations - Input Validation", () => {
     });
   });
 });
+
+  describe("Equipments - Input Validation", () => {
+    it("should validate equipment name is required", () => {
+      const equipmentSchema = z.object({
+        clientId: z.number(),
+        name: z.string(),
+        brand: z.string().optional(),
+        model: z.string().optional(),
+        serial: z.string().optional(),
+        equipmentTag: z.string().optional(),
+      });
+
+      expect(() => equipmentSchema.parse({ clientId: 1 })).toThrow();
+      expect(() => equipmentSchema.parse({ clientId: 1, name: "Printer" })).not.toThrow();
+    });
+
+    it("should validate equipment clientId is required", () => {
+      const equipmentSchema = z.object({
+        clientId: z.number(),
+        name: z.string(),
+      });
+
+      expect(() => equipmentSchema.parse({ name: "Printer" })).toThrow();
+      expect(() => equipmentSchema.parse({ clientId: 1, name: "Printer" })).not.toThrow();
+    });
+
+    it("should allow optional equipment fields", () => {
+      const equipmentSchema = z.object({
+        clientId: z.number(),
+        name: z.string(),
+        brand: z.string().optional(),
+        model: z.string().optional(),
+        serial: z.string().optional(),
+        equipmentTag: z.string().optional(),
+      });
+
+      const validEquipment = {
+        clientId: 1,
+        name: "Printer",
+        brand: "HP",
+        model: "LaserJet",
+        serial: "SN123456",
+        equipmentTag: "TAG-001",
+      };
+
+      expect(() => equipmentSchema.parse(validEquipment)).not.toThrow();
+    });
+
+    it("should validate equipment with minimal data", () => {
+      const equipmentSchema = z.object({
+        clientId: z.number(),
+        name: z.string(),
+        brand: z.string().optional(),
+        model: z.string().optional(),
+      });
+
+      const minimalEquipment = {
+        clientId: 1,
+        name: "Computer",
+      };
+
+      expect(() => equipmentSchema.parse(minimalEquipment)).not.toThrow();
+    });
+  });
