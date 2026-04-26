@@ -108,6 +108,7 @@ export default function OSForm() {
         equipmentBrand: existingOrder.equipmentBrand || "",
         equipmentModel: existingOrder.equipmentModel || "",
         equipmentSerial: existingOrder.equipmentSerial || "",
+        equipmentTag: existingOrder.equipmentTag || "",
         equipmentCondition: existingOrder.equipmentCondition || "",
         reportedDefects: existingOrder.reportedDefects || "",
         accessories: existingOrder.accessories || "",
