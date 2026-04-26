@@ -337,7 +337,18 @@ export default function OSForm() {
         throw new Error("Falha ao salvar ordem de serviço");
       }
 
-      // 2. Salvar itens de serviço
+      // 2. Se estiver editando, deletar todos os orderItems antigos primeiro
+      if (isEditing && existingOrderItems && existingOrderItems.length > 0) {
+        for (const item of existingOrderItems) {
+          try {
+            await deleteOrderItemMutation.mutateAsync(item.id);
+          } catch (error) {
+            console.error("Erro ao deletar item antigo:", error);
+          }
+        }
+      }
+
+      // 3. Salvar itens de serviço
       for (const service of osServices) {
         await createOrderItemMutation.mutateAsync({
           orderId: order.id,
@@ -349,7 +360,7 @@ export default function OSForm() {
         });
       }
 
-      // 3. Salvar itens de produto
+      // 4. Salvar itens de produto
       for (const product of osProducts) {
         await createOrderItemMutation.mutateAsync({
           orderId: order.id,
@@ -361,7 +372,7 @@ export default function OSForm() {
         });
       }
 
-      // 4. Salvar equipamento se houver dados
+      // 5. Salvar equipamento se houver dados
       if (formData.equipmentName) {
         await createEquipmentMutation.mutateAsync({
           clientId: parseInt(formData.clientId),
