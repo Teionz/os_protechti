@@ -79,6 +79,14 @@ export default function OSForm() {
 
   const [osServices, setOsServices] = useState<any[]>([]);
   const [osProducts, setOsProducts] = useState<any[]>([]);
+  const [equipmentSearch, setEquipmentSearch] = useState("");
+  const [showEquipmentSuggestions, setShowEquipmentSuggestions] = useState(false);
+  
+  // Buscar equipamentos do cliente
+  const { data: clientEquipments = [], isLoading: equipmentsLoading } = trpc.equipments.searchByClientId.useQuery(
+    formData.clientId ? { clientId: parseInt(formData.clientId), query: equipmentSearch } : undefined as any,
+    { enabled: !!formData.clientId }
+  );
   const [clientSearch, setClientSearch] = useState("");
   const [serviceSearch, setServiceSearch] = useState("");
   const [productSearch, setProductSearch] = useState("");
@@ -157,6 +165,18 @@ export default function OSForm() {
       ...prev,
       [field]: value,
     }));
+  };
+
+  const handleSelectEquipment = (equipment: any) => {
+    setFormData((prev) => ({
+      ...prev,
+      equipmentName: equipment.name || "",
+      equipmentBrand: equipment.brand || "",
+      equipmentModel: equipment.model || "",
+      equipmentSerial: equipment.serial || "",
+    }));
+    setEquipmentSearch(equipment.name);
+    setShowEquipmentSuggestions(false);
   };
 
   // Filtrar clientes por busca
@@ -564,15 +584,34 @@ export default function OSForm() {
             </div>
             {expandedSections.equipamento && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
+                <div className="relative">
                   <Label className="text-foreground">Nome do Equipamento</Label>
                   <Input
                     type="text"
                     placeholder="Ex: Notebook, Desktop, Impressora"
-                    value={formData.equipmentName}
-                    onChange={(e) => handleChange("equipmentName", e.target.value)}
+                    value={equipmentSearch}
+                    onChange={(e) => {
+                      setEquipmentSearch(e.target.value);
+                      setShowEquipmentSuggestions(true);
+                    }}
+                    onFocus={() => setShowEquipmentSuggestions(true)}
                     className="mt-1 bg-background border-border"
                   />
+                  {showEquipmentSuggestions && equipmentSearch && clientEquipments.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 bg-background border border-border rounded-lg mt-1 max-h-40 overflow-y-auto z-10">
+                      {clientEquipments.map((equipment: any) => (
+                        <button
+                          key={equipment.id}
+                          type="button"
+                          onClick={() => handleSelectEquipment(equipment)}
+                          className="w-full text-left px-4 py-2 hover:bg-accent/10 text-foreground border-b border-border/50 last:border-b-0"
+                        >
+                          <div className="text-sm font-medium">{equipment.name}</div>
+                          <div className="text-xs text-muted-foreground">{equipment.brand} {equipment.model} - SN: {equipment.serial}</div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div>
                   <Label className="text-foreground">Marca</Label>
@@ -582,6 +621,7 @@ export default function OSForm() {
                     value={formData.equipmentBrand}
                     onChange={(e) => handleChange("equipmentBrand", e.target.value)}
                     className="mt-1 bg-background border-border"
+                    disabled={!!(equipmentSearch && clientEquipments.length > 0)}
                   />
                 </div>
                 <div>

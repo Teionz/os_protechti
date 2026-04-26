@@ -352,6 +352,19 @@ export const appRouter = router({
     list: publicProcedure.query(() => db.getEquipments()),
     get: publicProcedure.input(z.number()).query(({ input }) => db.getEquipmentById(input)),
     getByClientId: publicProcedure.input(z.number()).query(({ input }) => db.getEquipmentsByClientId(input)),
+    getByClientIdAndTag: publicProcedure
+      .input(z.object({
+        clientId: z.number(),
+        tag: z.string(),
+      }))
+      .query(async ({ input }) => {
+        const equipments = await db.getEquipmentsByClientId(input.clientId);
+        // Buscar por tag na OS ou equipamento
+        return equipments.filter((e: any) => 
+          e.name?.toLowerCase().includes(input.tag.toLowerCase()) ||
+          e.serial?.toLowerCase().includes(input.tag.toLowerCase())
+        );
+      }),
     create: publicProcedure
       .input(z.object({
         clientId: z.number(),
@@ -384,6 +397,21 @@ export const appRouter = router({
       }))
       .mutation(({ input }) => db.updateEquipment(input.id, input.data)),
     delete: publicProcedure.input(z.number()).mutation(({ input }) => db.deleteEquipment(input)),
+    searchByClientId: publicProcedure
+      .input(z.object({
+        clientId: z.number(),
+        query: z.string(),
+      }))
+      .query(async ({ input }) => {
+        const equipments = await db.getEquipmentsByClientId(input.clientId);
+        const lowerQuery = input.query.toLowerCase();
+        return equipments.filter((e: any) => 
+          e.name?.toLowerCase().includes(lowerQuery) ||
+          e.brand?.toLowerCase().includes(lowerQuery) ||
+          e.model?.toLowerCase().includes(lowerQuery) ||
+          e.serial?.toLowerCase().includes(lowerQuery)
+        );
+      })
   }),
 });
 
