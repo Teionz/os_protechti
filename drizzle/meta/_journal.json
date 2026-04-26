@@ -43,6 +43,13 @@
       "when": 1777207009573,
       "tag": "0005_mean_mordo",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1777208401046,
+      "tag": "0006_pink_madame_masque",
+      "breakpoints": true
     }
   ]
 }

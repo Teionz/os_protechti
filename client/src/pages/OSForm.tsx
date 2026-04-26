@@ -405,6 +405,7 @@ export default function OSForm() {
           brand: formData.equipmentBrand,
           model: formData.equipmentModel,
           serial: formData.equipmentSerial,
+          equipmentTag: formData.equipmentTag,
           category: "Equipamento de Serviço",
           description: formData.equipmentCondition,
         });
