@@ -8,14 +8,13 @@ import { NewClientModal } from "@/components/NewClientModal";
 import Layout from "@/components/Layout";
 import { Save, Plus, Trash2, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import { useLocation, useRoute } from "wouter";
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 
 /**
  * OSForm - Formulário de cadastro/edição de Ordem de Serviço
  * Design: Dark Tech Professional com integração tRPC
- * Salva cliente, equipamento e serviços/produtos
  */
 export default function OSForm() {
   const [, navigate] = useLocation();
@@ -26,8 +25,10 @@ export default function OSForm() {
     dadosGerais: true,
     cliente: true,
     equipamento: true,
+    camposExtras: true,
     servicos: true,
     produtos: true,
+    resumo: true,
     observacoes: true,
   });
 
@@ -46,12 +47,12 @@ export default function OSForm() {
 
   const isLoadingData = clientsLoading || servicesLoading || productsLoading || (isEditing && orderLoading) || (isEditing && orderItemsLoading);
 
-  // Gerar orderNumber uma única vez (ou usar existente se editando)
+  // Gerar orderNumber uma única vez
   const orderNumber = useMemo(() => {
     if (isEditing && existingOrder?.orderNumber) {
       return existingOrder.orderNumber;
     }
-    return `OS-${Date.now()}`;
+    return `${Date.now()}`;
   }, [isEditing, existingOrder?.orderNumber]);
 
   const [formData, setFormData] = useState({
@@ -62,6 +63,7 @@ export default function OSForm() {
     channel: "PRESENCIAL",
     seller: "",
     technician: "",
+    // Equipamento
     equipmentName: "",
     equipmentBrand: "",
     equipmentModel: "",
@@ -70,31 +72,61 @@ export default function OSForm() {
     equipmentCondition: "",
     reportedDefects: "",
     accessories: "",
+    // Campos extras
+    origin: "",
+    missingKeyboard: "",
+    crackedScreen: "",
+    missingCharger: "",
+    missingBag: "",
+    poweringOn: "",
+    missingPowerCable: "",
+    password: "",
+    // Solução e relatório
     proposedSolution: "",
     technicalReport: "",
     terms: "",
     publicNotes: "",
     internalNotes: "",
+    // Financeiro
+    laborCost: "",
+    partsCost: "",
+    shippingCost: "",
+    otherCosts: "",
+    discount: "",
   });
 
-  const [osServices, setOsServices] = useState<any[]>([]);
-  const [osProducts, setOsProducts] = useState<any[]>([]);
+  // Itens de serviço e produto com campos manuais
+  const [osServices, setOsServices] = useState<Array<{
+    id: number;
+    name: string;
+    details: string;
+    quantity: number;
+    price: number;
+    discount: number;
+  }>>([]);
+
+  const [osProducts, setOsProducts] = useState<Array<{
+    id: number;
+    name: string;
+    details: string;
+    quantity: number;
+    price: number;
+    discount: number;
+  }>>([]);
+
   const [equipmentSearch, setEquipmentSearch] = useState("");
   const [showEquipmentSuggestions, setShowEquipmentSuggestions] = useState(false);
-  
-  // Buscar equipamentos do cliente
-  const { data: clientEquipments = [], isLoading: equipmentsLoading } = trpc.equipments.searchByClientId.useQuery(
-    formData.clientId ? { clientId: parseInt(formData.clientId), query: equipmentSearch } : undefined as any,
-    { enabled: !!formData.clientId }
-  );
   const [clientSearch, setClientSearch] = useState("");
-  const [serviceSearch, setServiceSearch] = useState("");
-  const [productSearch, setProductSearch] = useState("");
   const [equipmentTagError, setEquipmentTagError] = useState("");
   const [checkingTag, setCheckingTag] = useState(false);
 
+  // Buscar equipamentos do cliente
+  const { data: clientEquipments = [] } = trpc.equipments.searchByClientId.useQuery(
+    formData.clientId ? { clientId: parseInt(formData.clientId), query: equipmentSearch } : undefined as any,
+    { enabled: !!formData.clientId }
+  );
 
-  // Mutations e utils - declaradas no topo do componente
+  // Mutations
   const utils = trpc.useUtils();
   const createOrderMutation = trpc.orders.create.useMutation();
   const updateOrderMutation = trpc.orders.update.useMutation();
@@ -105,104 +137,103 @@ export default function OSForm() {
 
   // Validar etiqueta em tempo real
   const validateEquipmentTag = async (tag: string, excludeId?: number) => {
-    if (!tag) {
-      setEquipmentTagError("");
-      return true;
-    }
-
+    if (!tag) { setEquipmentTagError(""); return true; }
     setCheckingTag(true);
     try {
       const input = { equipmentTag: tag, excludeId };
       const response = await fetch(`/api/trpc/equipments.checkTagExists?input=${encodeURIComponent(JSON.stringify(input))}`, {
-        method: 'GET',
-        credentials: 'include',
+        method: 'GET', credentials: 'include',
       });
       const result = await response.json();
       const exists = result.result?.data ?? false;
-      
       if (exists) {
-        setEquipmentTagError(`Etiqueta "${tag}" ja existe no sistema`);
+        setEquipmentTagError(`Etiqueta "${tag}" já existe no sistema`);
         return false;
       } else {
         setEquipmentTagError("");
         return true;
       }
-    } catch (error) {
-      console.error("Erro ao validar etiqueta:", error);
-      return true;
-    } finally {
-      setCheckingTag(false);
-    }
+    } catch { return true; }
+    finally { setCheckingTag(false); }
   };
 
   // Carregar dados da OS se estiver editando
   useEffect(() => {
     if (isEditing && existingOrder) {
+      const o = existingOrder as any;
       setFormData({
-        clientId: existingOrder.clientId?.toString() || "",
-        orderNumber: existingOrder.orderNumber,
-        status: (existingOrder.status as any) || "budgeting",
-        priority: (existingOrder.priority as any) || "medium",
-        channel: existingOrder.channel,
-        seller: existingOrder.seller || "",
-        technician: existingOrder.technician || "",
-        equipmentName: existingOrder.equipmentName || "",
-        equipmentBrand: existingOrder.equipmentBrand || "",
-        equipmentModel: existingOrder.equipmentModel || "",
-        equipmentSerial: existingOrder.equipmentSerial || "",
-        equipmentTag: existingOrder.equipmentTag || "",
-        equipmentCondition: existingOrder.equipmentCondition || "",
-        reportedDefects: existingOrder.reportedDefects || "",
-        accessories: existingOrder.accessories || "",
-        proposedSolution: existingOrder.proposedSolution || "",
-        technicalReport: existingOrder.technicalReport || "",
-        terms: existingOrder.terms || "",
-        publicNotes: existingOrder.publicNotes || "",
-        internalNotes: existingOrder.internalNotes || "",
-      } as any);
+        clientId: o.clientId?.toString() || "",
+        orderNumber: o.orderNumber,
+        status: o.status || "budgeting",
+        priority: o.priority || "medium",
+        channel: o.channel || "PRESENCIAL",
+        seller: o.seller || "",
+        technician: o.technician || "",
+        equipmentName: o.equipmentName || "",
+        equipmentBrand: o.equipmentBrand || "",
+        equipmentModel: o.equipmentModel || "",
+        equipmentSerial: o.equipmentSerial || "",
+        equipmentTag: o.equipmentTag || "",
+        equipmentCondition: o.equipmentCondition || "",
+        reportedDefects: o.reportedDefects || "",
+        accessories: o.accessories || "",
+        origin: o.origin || "",
+        missingKeyboard: o.missingKeyboard || "",
+        crackedScreen: o.crackedScreen || "",
+        missingCharger: o.missingCharger || "",
+        missingBag: o.missingBag || "",
+        poweringOn: o.poweringOn || "",
+        missingPowerCable: o.missingPowerCable || "",
+        password: o.password || "",
+        proposedSolution: o.proposedSolution || "",
+        technicalReport: o.technicalReport || "",
+        terms: o.terms || "",
+        publicNotes: o.publicNotes || "",
+        internalNotes: o.internalNotes || "",
+        laborCost: o.laborCost || "",
+        partsCost: o.partsCost || "",
+        shippingCost: o.shippingCost || "",
+        otherCosts: o.otherCosts || "",
+        discount: o.discount || "",
+      });
 
-      // Carregar serviços e produtos da OS
       if (existingOrderItems && existingOrderItems.length > 0) {
-        const servicesFromOrder = existingOrderItems
+        const svc = existingOrderItems
           .filter((item: any) => item.type === "service")
           .map((item: any) => ({
             id: item.id,
             name: item.description,
+            details: item.details || "",
             quantity: parseInt(item.quantity) || 1,
             price: parseFloat(item.unitPrice) || 0,
-            total: parseFloat(item.total) || 0,
+            discount: parseFloat(item.discount) || 0,
           }));
-        const productsFromOrder = existingOrderItems
+        const prd = existingOrderItems
           .filter((item: any) => item.type === "product")
           .map((item: any) => ({
             id: item.id,
             name: item.description,
+            details: item.details || "",
             quantity: parseInt(item.quantity) || 1,
             price: parseFloat(item.unitPrice) || 0,
-            total: parseFloat(item.total) || 0,
+            discount: parseFloat(item.discount) || 0,
           }));
-        setOsServices(servicesFromOrder);
-        setOsProducts(productsFromOrder);
+        setOsServices(svc);
+        setOsProducts(prd);
       }
     }
-  }, [isEditing, existingOrder, existingOrderItems, params?.id]);
+  }, [isEditing, existingOrder, existingOrderItems]);
 
   const toggleSection = (section: string) => {
-    setExpandedSections({
-      ...expandedSections,
-      [section]: !(expandedSections[section] ?? false),
-    });
+    setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
   };
 
   const handleChange = (field: string, value: any) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleSelectEquipment = (equipment: any) => {
-    setFormData((prev) => ({
+    setFormData(prev => ({
       ...prev,
       equipmentName: equipment.name || "",
       equipmentBrand: equipment.brand || "",
@@ -214,299 +245,181 @@ export default function OSForm() {
     setShowEquipmentSuggestions(false);
   };
 
-  // Filtrar clientes por busca
   const filteredClients = clients.filter((client: any) =>
     client.name?.toLowerCase().includes(clientSearch.toLowerCase()) ||
     client.email?.toLowerCase().includes(clientSearch.toLowerCase())
   );
 
-  // Filtrar serviços por busca
-  const filteredServices = services.filter((service: any) =>
-    service.name?.toLowerCase().includes(serviceSearch.toLowerCase())
-  );
-
-  // Filtrar produtos por busca
-  const filteredProducts = products.filter((product: any) =>
-    product.name?.toLowerCase().includes(productSearch.toLowerCase())
-  );
-
-  // SERVIÇOS
-  const handleAddService = () => {
-    if (!serviceSearch) {
-      toast.error("Selecione um serviço");
-      return;
-    }
-    const selectedService = filteredServices[0];
-    if (!selectedService) {
-      toast.error("Serviço não encontrado");
-      return;
-    }
-    setOsServices([
-      ...osServices,
-      {
-        id: Date.now(),
-        name: selectedService.name,
-        price: parseFloat(selectedService.price),
-        quantity: 1,
-      },
-    ]);
-    setServiceSearch("");
+  // Serviços - adicionar linha manual
+  const handleAddServiceRow = () => {
+    setOsServices(prev => [...prev, { id: Date.now(), name: "", details: "", quantity: 1, price: 0, discount: 0 }]);
   };
 
   const handleRemoveService = async (id: number) => {
-    // Se for um item existente (vindo do banco), deletar do banco
     if (isEditing && id < 1000000000000) {
-      try {
-        await deleteOrderItemMutation.mutateAsync(id);
-      } catch (error) {
-        console.error("Erro ao deletar serviço:", error);
-        toast.error("Erro ao deletar serviço");
-        return;
-      }
+      try { await deleteOrderItemMutation.mutateAsync(id); } catch {}
     }
-    setOsServices(osServices.filter((s) => s.id !== id));
+    setOsServices(prev => prev.filter(s => s.id !== id));
   };
 
   const handleUpdateService = (id: number, field: string, value: any) => {
-    setOsServices(
-      osServices.map((s) =>
-        s.id === id ? { ...s, [field]: value } : s
-      )
-    );
+    setOsServices(prev => prev.map(s => s.id === id ? { ...s, [field]: value } : s));
   };
 
-  // PRODUTOS
-  const handleAddProduct = () => {
-    if (!productSearch) {
-      toast.error("Selecione um produto");
-      return;
-    }
-    const selectedProduct = filteredProducts[0];
-    if (!selectedProduct) {
-      toast.error("Produto não encontrado");
-      return;
-    }
-    setOsProducts([
-      ...osProducts,
-      {
-        id: Date.now(),
-        name: selectedProduct.name,
-        price: parseFloat(selectedProduct.price),
-        quantity: 1,
-      },
-    ]);
-    setProductSearch("");
+  // Produtos - adicionar linha manual
+  const handleAddProductRow = () => {
+    setOsProducts(prev => [...prev, { id: Date.now(), name: "", details: "", quantity: 1, price: 0, discount: 0 }]);
   };
 
   const handleRemoveProduct = async (id: number) => {
-    // Se for um item existente (vindo do banco), deletar do banco
     if (isEditing && id < 1000000000000) {
-      try {
-        await deleteOrderItemMutation.mutateAsync(id);
-      } catch (error) {
-        console.error("Erro ao deletar produto:", error);
-        toast.error("Erro ao deletar produto");
-        return;
-      }
+      try { await deleteOrderItemMutation.mutateAsync(id); } catch {}
     }
-    setOsProducts(osProducts.filter((p) => p.id !== id));
+    setOsProducts(prev => prev.filter(p => p.id !== id));
   };
 
   const handleUpdateProduct = (id: number, field: string, value: any) => {
-    setOsProducts(
-      osProducts.map((p) =>
-        p.id === id ? { ...p, [field]: value } : p
-      )
-    );
+    setOsProducts(prev => prev.map(p => p.id === id ? { ...p, [field]: value } : p));
   };
 
-  // Calcular totais
-  const totalServices = osServices.reduce((sum, s) => sum + s.price * s.quantity, 0);
-  const totalProducts = osProducts.reduce((sum, p) => sum + p.price * p.quantity, 0);
-  const total = totalServices + totalProducts;
+  // Calcular subtotais
+  const calcSubtotal = (item: { quantity: number; price: number; discount: number }) => {
+    const sub = item.quantity * item.price;
+    return sub - (sub * (item.discount / 100));
+  };
+
+  const totalServices = osServices.reduce((sum, s) => sum + calcSubtotal(s), 0);
+  const totalProducts = osProducts.reduce((sum, p) => sum + calcSubtotal(p), 0);
+  const laborCostNum = parseFloat(formData.laborCost) || 0;
+  const shippingCostNum = parseFloat(formData.shippingCost) || 0;
+  const otherCostsNum = parseFloat(formData.otherCosts) || 0;
+  const discountNum = parseFloat(formData.discount) || 0;
+  const subtotalGeral = totalServices + totalProducts + laborCostNum + shippingCostNum + otherCostsNum;
+  const totalGeral = subtotalGeral - discountNum;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.clientId) { toast.error("Selecione um cliente"); return; }
 
-    if (!formData.clientId) {
-      toast.error("Selecione um cliente");
-      return;
-    }
-
-    // Validar etiqueta antes de salvar
     if (formData.equipmentTag) {
       const isTagValid = await validateEquipmentTag(formData.equipmentTag, isEditing ? parseInt(params?.id as string) : undefined);
-      if (!isTagValid) {
-        toast.error("Etiqueta de controle duplicada. Escolha outra etiqueta.");
-        setLoading(false);
-        return;
-      }
+      if (!isTagValid) { toast.error("Etiqueta de controle duplicada. Escolha outra etiqueta."); return; }
     }
 
     setLoading(true);
-
     try {
-      // 0. Salvar equipamento PRIMEIRO (antes de criar a OS)
-      // Verificar se QUALQUER campo de equipamento foi preenchido
+      // 0. Salvar equipamento primeiro
       const hasEquipmentData = formData.equipmentName || formData.equipmentBrand || formData.equipmentModel || formData.equipmentSerial || formData.equipmentTag;
       if (hasEquipmentData) {
-        try {
-          // Verificar se equipamento com essa tag já existe
-          let equipmentExists = false;
-          if (formData.equipmentTag) {
-            const existingEquipments = await utils.equipments.searchByClientId.fetch({
-              clientId: parseInt(formData.clientId),
-              query: formData.equipmentTag,
-            });
-            equipmentExists = existingEquipments.some((e: any) => e.equipmentTag === formData.equipmentTag);
-          }
-
-          // Só criar novo equipamento se não existir
-          if (!equipmentExists) {
-            const equipmentResult = await createEquipmentMutation.mutateAsync({
-              clientId: parseInt(formData.clientId),
-              name: formData.equipmentName,
-              brand: formData.equipmentBrand,
-              model: formData.equipmentModel,
-              serial: formData.equipmentSerial,
-              equipmentTag: formData.equipmentTag,
-              category: "Equipamento de Serviço",
-              description: formData.equipmentCondition,
-            });
-            
-            if (!equipmentResult?.id) {
-              console.warn("Equipamento criado mas sem ID retornado:", equipmentResult);
-              toast.error("Aviso: Equipamento pode não ter sido salvo corretamente");
-            } else {
-              console.log("Equipamento criado com sucesso. ID:", equipmentResult.id);
-              toast.success("Equipamento salvo com sucesso!");
-            }
-          } else {
-            console.log("Equipamento com essa tag já existe, não criando duplicata");
-          }
-        } catch (error) {
-          console.error("Erro ao salvar equipamento:", error);
-          toast.error(`Erro ao salvar equipamento: ${(error as any)?.message || 'Erro desconhecido'}`);
-          throw error; // Parar o fluxo se equipamento não salvar
+        let equipmentExists = false;
+        if (formData.equipmentTag) {
+          const existing = await utils.equipments.searchByClientId.fetch({ clientId: parseInt(formData.clientId), query: formData.equipmentTag });
+          equipmentExists = existing.some((e: any) => e.equipmentTag === formData.equipmentTag);
+        }
+        if (!equipmentExists) {
+          const result = await createEquipmentMutation.mutateAsync({
+            clientId: parseInt(formData.clientId),
+            name: formData.equipmentName,
+            brand: formData.equipmentBrand,
+            model: formData.equipmentModel,
+            serial: formData.equipmentSerial,
+            equipmentTag: formData.equipmentTag,
+            category: "Equipamento de Serviço",
+            description: formData.equipmentCondition,
+          });
+          if (result?.id) toast.success("Equipamento salvo com sucesso!");
         }
       }
 
-      // 1. Criar ou Atualizar Ordem de Serviço
-      let order;
+      // 1. Criar ou atualizar OS
+      const orderData = {
+        clientId: parseInt(formData.clientId),
+        status: formData.status as any,
+        priority: formData.priority as any,
+        channel: formData.channel,
+        seller: formData.seller,
+        technician: formData.technician,
+        equipmentName: formData.equipmentName,
+        equipmentBrand: formData.equipmentBrand,
+        equipmentModel: formData.equipmentModel,
+        equipmentSerial: formData.equipmentSerial,
+        equipmentTag: formData.equipmentTag,
+        equipmentCondition: formData.equipmentCondition,
+        reportedDefects: formData.reportedDefects,
+        accessories: formData.accessories,
+        origin: formData.origin as any,
+        missingKeyboard: formData.missingKeyboard as any,
+        crackedScreen: formData.crackedScreen as any,
+        missingCharger: formData.missingCharger as any,
+        missingBag: formData.missingBag as any,
+        poweringOn: formData.poweringOn as any,
+        missingPowerCable: formData.missingPowerCable as any,
+        password: formData.password,
+        proposedSolution: formData.proposedSolution,
+        technicalReport: formData.technicalReport,
+        terms: formData.terms,
+        publicNotes: formData.publicNotes,
+        internalNotes: formData.internalNotes,
+        laborCost: formData.laborCost,
+        partsCost: formData.partsCost,
+        shippingCost: formData.shippingCost,
+        otherCosts: formData.otherCosts,
+        discount: formData.discount,
+        total: totalGeral.toString(),
+      };
+
+      let order: any;
       if (isEditing && existingOrder?.id) {
-        // Editar
-        await updateOrderMutation.mutateAsync({
-          id: existingOrder.id,
-          data: {
-            clientId: parseInt(formData.clientId),
-            status: formData.status as any,
-            priority: formData.priority as any,
-            channel: formData.channel,
-            seller: formData.seller,
-            technician: formData.technician,
-            equipmentName: formData.equipmentName,
-            equipmentBrand: formData.equipmentBrand,
-            equipmentModel: formData.equipmentModel,
-            equipmentSerial: formData.equipmentSerial,
-            equipmentTag: formData.equipmentTag,
-            equipmentCondition: formData.equipmentCondition,
-            reportedDefects: formData.reportedDefects,
-            accessories: formData.accessories,
-            proposedSolution: formData.proposedSolution,
-            technicalReport: formData.technicalReport,
-            terms: formData.terms,
-            publicNotes: formData.publicNotes,
-            internalNotes: formData.internalNotes,
-            total: total.toString(),
-          },
-        });
+        await updateOrderMutation.mutateAsync({ id: existingOrder.id, data: orderData });
         order = { id: existingOrder.id };
         toast.success("Ordem de Serviço atualizada com sucesso!");
       } else {
-        // Criar
-        order = await createOrderMutation.mutateAsync({
-          orderNumber: formData.orderNumber,
-          clientId: parseInt(formData.clientId),
-          status: formData.status as any,
-          priority: formData.priority as any,
-          channel: formData.channel,
-          seller: formData.seller,
-          technician: formData.technician,
-          equipmentName: formData.equipmentName,
-          equipmentBrand: formData.equipmentBrand,
-          equipmentModel: formData.equipmentModel,
-          equipmentSerial: formData.equipmentSerial,
-          equipmentTag: formData.equipmentTag,
-          equipmentCondition: formData.equipmentCondition,
-          reportedDefects: formData.reportedDefects,
-          accessories: formData.accessories,
-          proposedSolution: formData.proposedSolution,
-          technicalReport: formData.technicalReport,
-          terms: formData.terms,
-          publicNotes: formData.publicNotes,
-          internalNotes: formData.internalNotes,
-          total: total.toString(),
-        });
+        order = await createOrderMutation.mutateAsync({ orderNumber: formData.orderNumber, ...orderData });
         toast.success("Ordem de Serviço criada com sucesso!");
       }
 
-      if (!order?.id) {
-        console.error("Order retornado sem ID:", order);
-        throw new Error(`Falha ao salvar ordem de serviço. Resposta: ${JSON.stringify(order)}`);
-      }
+      if (!order?.id) throw new Error("Falha ao salvar ordem de serviço");
 
-      // 2. Se estiver editando, deletar todos os orderItems antigos primeiro
+      // 2. Deletar itens antigos e recriar
       if (isEditing && order.id) {
-        try {
-          await deleteOrderItemsByOrderIdMutation.mutateAsync(order.id);
-        } catch (error) {
-          console.error("Erro ao deletar itens antigos:", error);
-        }
+        try { await deleteOrderItemsByOrderIdMutation.mutateAsync(order.id); } catch {}
       }
 
-      // 3. Salvar itens de serviço
       for (const service of osServices) {
+        if (!service.name) continue;
         await createOrderItemMutation.mutateAsync({
           orderId: order.id,
           type: "service",
           description: service.name,
+          details: service.details || undefined,
           quantity: service.quantity,
           unitPrice: service.price.toString(),
-          total: (service.quantity * service.price).toString(),
+          discount: service.discount ? service.discount.toString() : undefined,
+          total: calcSubtotal(service).toString(),
         });
       }
 
-      // 4. Salvar itens de produto
       for (const product of osProducts) {
+        if (!product.name) continue;
         await createOrderItemMutation.mutateAsync({
           orderId: order.id,
           type: "product",
           description: product.name,
+          details: product.details || undefined,
           quantity: product.quantity,
           unitPrice: product.price.toString(),
-          total: (product.quantity * product.price).toString(),
+          discount: product.discount ? product.discount.toString() : undefined,
+          total: calcSubtotal(product).toString(),
         });
       }
 
-      // Invalidar queries para garantir dados atualizados
-      await utils.orderItems.getByOrderId.invalidate(order.id);
-      await utils.orders.get.invalidate(order.id);
       await utils.orders.list.invalidate();
+      await utils.orders.get.invalidate(order.id);
       await utils.equipments.list.invalidate();
-      await utils.equipments.getByClientId.invalidate(parseInt(formData.clientId));
-      await utils.equipments.searchByClientId.invalidate({
-        clientId: parseInt(formData.clientId),
-        query: formData.equipmentTag || "",
-      });
 
-      toast.success("Ordem de Serviço salva com sucesso!");
       navigate("/os/list");
-
     } catch (error: any) {
-      console.error("Erro ao salvar:", error);
-      const errorMsg = error?.message || JSON.stringify(error);
-      console.error("Detalhes do erro:", errorMsg);
-      toast.error(`Erro ao salvar ordem: ${errorMsg}`);
+      toast.error(`Erro ao salvar: ${error?.message || "Erro desconhecido"}`);
     } finally {
       setLoading(false);
     }
@@ -522,34 +435,52 @@ export default function OSForm() {
     );
   }
 
+  const SectionHeader = ({ title, section }: { title: string; section: string }) => (
+    <div
+      className="flex items-center justify-between cursor-pointer mb-4"
+      onClick={() => toggleSection(section)}
+    >
+      <h2 className="text-xl font-bold text-foreground">{title}</h2>
+      {expandedSections[section] ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+    </div>
+  );
+
+  const YesNoSelect = ({ field, label }: { field: string; label: string }) => (
+    <div>
+      <Label className="text-foreground">{label}</Label>
+      <Select value={(formData as any)[field]} onValueChange={(v) => handleChange(field, v)}>
+        <SelectTrigger className="mt-1 bg-background border-border">
+          <SelectValue placeholder="Selecione..." />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="yes">Sim</SelectItem>
+          <SelectItem value="no">Não</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+  );
+
   return (
     <Layout>
       <div className="container py-8">
-        <h1 className="text-3xl font-bold text-foreground mb-8">Nova Ordem de Serviço</h1>
+        <h1 className="text-3xl font-bold text-foreground mb-8">
+          {isEditing ? "Editar Ordem de Serviço" : "Nova Ordem de Serviço"}
+        </h1>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+
           {/* DADOS GERAIS */}
           <Card className="card-float p-6">
-            <div
-              className="flex items-center justify-between cursor-pointer mb-4"
-              onClick={() => toggleSection("dadosGerais")}
-            >
-              <h2 className="text-xl font-bold text-foreground">Dados Gerais</h2>
-              {expandedSections.dadosGerais ? (
-                <ChevronUp className="w-5 h-5" />
-              ) : (
-                <ChevronDown className="w-5 h-5" />
-              )}
-            </div>
+            <SectionHeader title="Dados Gerais" section="dadosGerais" />
             {expandedSections.dadosGerais && (
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
-                  <Label className="text-foreground">Número da OS</Label>
+                  <Label className="text-foreground">Ordem de Serviço</Label>
                   <Input
                     type="text"
                     value={formData.orderNumber}
                     disabled
-                    className="mt-1 bg-background/50 border-border"
+                    className="mt-1 bg-background/50 border-border font-mono"
                   />
                 </div>
                 <div>
@@ -582,6 +513,41 @@ export default function OSForm() {
                   </Select>
                 </div>
                 <div>
+                  <Label className="text-foreground">Origem</Label>
+                  <Select value={formData.origin} onValueChange={(v) => handleChange("origin", v)}>
+                    <SelectTrigger className="mt-1 bg-background border-border">
+                      <SelectValue placeholder="Selecione a origem..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="advertisement">Anúncio</SelectItem>
+                      <SelectItem value="client">Cliente</SelectItem>
+                      <SelectItem value="referral">Indicação</SelectItem>
+                      <SelectItem value="bni">BNI</SelectItem>
+                      <SelectItem value="new_client">Cliente Novo</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-foreground">Técnico</Label>
+                  <Input
+                    type="text"
+                    value={formData.technician}
+                    onChange={(e) => handleChange("technician", e.target.value)}
+                    className="mt-1 bg-background border-border"
+                    placeholder="Nome do técnico"
+                  />
+                </div>
+                <div>
+                  <Label className="text-foreground">Vendedor</Label>
+                  <Input
+                    type="text"
+                    value={formData.seller}
+                    onChange={(e) => handleChange("seller", e.target.value)}
+                    className="mt-1 bg-background border-border"
+                    placeholder="Nome do vendedor"
+                  />
+                </div>
+                <div>
                   <Label className="text-foreground">Canal</Label>
                   <Input
                     type="text"
@@ -596,17 +562,7 @@ export default function OSForm() {
 
           {/* CLIENTE */}
           <Card className="card-float p-6">
-            <div
-              className="flex items-center justify-between cursor-pointer mb-4"
-              onClick={() => toggleSection("cliente")}
-            >
-              <h2 className="text-xl font-bold text-foreground">Cliente</h2>
-              {expandedSections.cliente ? (
-                <ChevronUp className="w-5 h-5" />
-              ) : (
-                <ChevronDown className="w-5 h-5" />
-              )}
-            </div>
+            <SectionHeader title="Cliente" section="cliente" />
             {expandedSections.cliente && (
               <div className="space-y-4">
                 <div className="flex gap-2">
@@ -659,17 +615,7 @@ export default function OSForm() {
 
           {/* EQUIPAMENTO */}
           <Card className="card-float p-6">
-            <div
-              className="flex items-center justify-between cursor-pointer mb-4"
-              onClick={() => toggleSection("equipamento")}
-            >
-              <h2 className="text-xl font-bold text-foreground">Equipamento</h2>
-              {expandedSections.equipamento ? (
-                <ChevronUp className="w-5 h-5" />
-              ) : (
-                <ChevronDown className="w-5 h-5" />
-              )}
-            </div>
+            <SectionHeader title="Equipamento" section="equipamento" />
             {expandedSections.equipamento && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="relative">
@@ -710,7 +656,6 @@ export default function OSForm() {
                     value={formData.equipmentBrand}
                     onChange={(e) => handleChange("equipmentBrand", e.target.value)}
                     className="mt-1 bg-background border-border"
-                    disabled={false}
                   />
                 </div>
                 <div>
@@ -747,19 +692,11 @@ export default function OSForm() {
                         setEquipmentTagError("");
                       }
                     }}
-                    className={`mt-1 bg-background border-border ${
-                      equipmentTagError ? "border-red-500" : ""
-                    }`}
+                    className={`mt-1 bg-background border-border ${equipmentTagError ? "border-red-500" : ""}`}
                     disabled={checkingTag}
                   />
-                  {equipmentTagError && (
-                    <p className="text-red-500 text-sm mt-1 flex items-center gap-1">
-                      ⚠️ {equipmentTagError}
-                    </p>
-                  )}
-                  {checkingTag && (
-                    <p className="text-yellow-500 text-sm mt-1">Verificando disponibilidade...</p>
-                  )}
+                  {equipmentTagError && <p className="text-red-500 text-sm mt-1">⚠️ {equipmentTagError}</p>}
+                  {checkingTag && <p className="text-yellow-500 text-sm mt-1">Verificando disponibilidade...</p>}
                 </div>
                 <div className="md:col-span-2">
                   <Label className="text-foreground">Condição do Equipamento</Label>
@@ -783,95 +720,132 @@ export default function OSForm() {
             )}
           </Card>
 
+          {/* CAMPOS EXTRAS */}
+          <Card className="card-float p-6">
+            <SectionHeader title="Informações Adicionais" section="camposExtras" />
+            {expandedSections.camposExtras && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <YesNoSelect field="missingKeyboard" label="Teclado faltando" />
+                  <YesNoSelect field="crackedScreen" label="Tela trincada" />
+                  <YesNoSelect field="missingCharger" label="Carregador" />
+                  <YesNoSelect field="missingBag" label="Bolsa" />
+                  <YesNoSelect field="poweringOn" label="Ligando" />
+                  <YesNoSelect field="missingPowerCable" label="Cabo de energia" />
+                </div>
+                <div className="max-w-sm">
+                  <Label className="text-foreground">Senha</Label>
+                  <Input
+                    type="text"
+                    placeholder="Senha do dispositivo (se houver)"
+                    value={formData.password}
+                    onChange={(e) => handleChange("password", e.target.value)}
+                    className="mt-1 bg-background border-border"
+                  />
+                </div>
+              </div>
+            )}
+          </Card>
+
           {/* SERVIÇOS */}
           <Card className="card-float p-6">
-            <div
-              className="flex items-center justify-between cursor-pointer mb-4"
-              onClick={() => toggleSection("servicos")}
-            >
-              <h2 className="text-xl font-bold text-foreground">Serviços</h2>
-              {expandedSections.servicos ? (
-                <ChevronUp className="w-5 h-5" />
-              ) : (
-                <ChevronDown className="w-5 h-5" />
-              )}
-            </div>
+            <SectionHeader title="Serviços" section="servicos" />
             {expandedSections.servicos && (
-              <div className="space-y-4">
-                <div className="flex gap-2">
-                  <div className="flex-1 relative">
-                    <Label className="text-foreground">Adicionar Serviço</Label>
-                    <Input
-                      type="text"
-                      placeholder="Buscar serviço..."
-                      value={serviceSearch}
-                      onChange={(e) => setServiceSearch(e.target.value)}
-                      className="mt-1 bg-background border-border"
-                    />
-                    {serviceSearch && filteredServices.length > 0 && (
-                      <div className="absolute top-full left-0 right-0 bg-background border border-border rounded-lg mt-1 max-h-40 overflow-y-auto z-10">
-                        {filteredServices.map((service: any) => (
-                          <button
-                            key={service.id}
-                            type="button"
-                            onClick={() => {
-                              setServiceSearch(service.name);
-                            }}
-                            className="w-full text-left px-4 py-2 hover:bg-accent/10 text-foreground"
-                          >
-                            {service.name} - R$ {parseFloat(service.price).toFixed(2)}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex items-end">
-                    <Button
-                      type="button"
-                      onClick={handleAddService}
-                      className="bg-accent text-background hover:bg-accent/90 gap-2"
-                    >
-                      <Plus className="w-4 h-4" />
-                      Adicionar
-                    </Button>
-                  </div>
+              <div className="space-y-3">
+                {/* Cabeçalho da tabela */}
+                <div className="hidden md:grid grid-cols-12 gap-2 px-2 text-xs text-muted-foreground font-medium uppercase tracking-wide">
+                  <div className="col-span-3">Serviço</div>
+                  <div className="col-span-3">Detalhes</div>
+                  <div className="col-span-1 text-center">Qtd</div>
+                  <div className="col-span-2 text-right">Valor (R$)</div>
+                  <div className="col-span-1 text-right">Desc (%)</div>
+                  <div className="col-span-1 text-right">Subtotal</div>
+                  <div className="col-span-1"></div>
                 </div>
 
+                {osServices.map((service) => (
+                  <div key={service.id} className="grid grid-cols-12 gap-2 items-center p-2 bg-background/50 rounded-lg border border-border/30">
+                    <div className="col-span-12 md:col-span-3">
+                      <Input
+                        type="text"
+                        placeholder="Nome do serviço"
+                        value={service.name}
+                        onChange={(e) => handleUpdateService(service.id, "name", e.target.value)}
+                        className="bg-background border-border text-sm"
+                      />
+                    </div>
+                    <div className="col-span-12 md:col-span-3">
+                      <Input
+                        type="text"
+                        placeholder="Detalhes"
+                        value={service.details}
+                        onChange={(e) => handleUpdateService(service.id, "details", e.target.value)}
+                        className="bg-background border-border text-sm"
+                      />
+                    </div>
+                    <div className="col-span-4 md:col-span-1">
+                      <Input
+                        type="number"
+                        min="1"
+                        value={service.quantity}
+                        onChange={(e) => handleUpdateService(service.id, "quantity", parseInt(e.target.value) || 1)}
+                        className="bg-background border-border text-center text-sm"
+                      />
+                    </div>
+                    <div className="col-span-4 md:col-span-2">
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="0,00"
+                        value={service.price || ""}
+                        onChange={(e) => handleUpdateService(service.id, "price", parseFloat(e.target.value) || 0)}
+                        className="bg-background border-border text-right text-sm"
+                      />
+                    </div>
+                    <div className="col-span-3 md:col-span-1">
+                      <Input
+                        type="number"
+                        min="0"
+                        max="100"
+                        placeholder="0"
+                        value={service.discount || ""}
+                        onChange={(e) => handleUpdateService(service.id, "discount", parseFloat(e.target.value) || 0)}
+                        className="bg-background border-border text-right text-sm"
+                      />
+                    </div>
+                    <div className="col-span-10 md:col-span-1 text-right">
+                      <span className="text-sm font-bold text-accent">
+                        R$ {calcSubtotal(service).toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="col-span-2 md:col-span-1 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveService(service.id)}
+                        className="p-1.5 text-red-400 hover:bg-red-500/10 rounded"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleAddServiceRow}
+                  className="w-full border-dashed border-border/50 text-muted-foreground hover:text-foreground gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  Adicionar Serviço
+                </Button>
+
                 {osServices.length > 0 && (
-                  <div className="space-y-2">
-                    {osServices.map((service) => (
-                      <div key={service.id} className="flex gap-2 items-center p-3 bg-background/50 rounded-lg">
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-foreground">{service.name}</p>
-                        </div>
-                        <div className="flex gap-2 items-center">
-                          <Input
-                            type="number"
-                            min="1"
-                            value={service.quantity}
-                            onChange={(e) =>
-                              handleUpdateService(service.id, "quantity", parseInt(e.target.value))
-                            }
-                            className="w-16 bg-background border-border text-center"
-                          />
-                          <span className="text-sm text-muted-foreground">×</span>
-                          <span className="text-sm font-medium text-accent">
-                            R$ {service.price.toFixed(2)}
-                          </span>
-                          <span className="text-sm text-muted-foreground">=</span>
-                          <span className="text-sm font-bold text-accent">
-                            R$ {(service.quantity * service.price).toFixed(2)}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveService(service.id)}
-                            className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                  <div className="flex justify-end pt-2 border-t border-border/30">
+                    <p className="text-sm text-muted-foreground">
+                      Total Serviços: <span className="text-accent font-bold text-base ml-2">R$ {totalServices.toFixed(2)}</span>
+                    </p>
                   </div>
                 )}
               </div>
@@ -880,132 +854,209 @@ export default function OSForm() {
 
           {/* PRODUTOS */}
           <Card className="card-float p-6">
-            <div
-              className="flex items-center justify-between cursor-pointer mb-4"
-              onClick={() => toggleSection("produtos")}
-            >
-              <h2 className="text-xl font-bold text-foreground">Produtos</h2>
-              {expandedSections.produtos ? (
-                <ChevronUp className="w-5 h-5" />
-              ) : (
-                <ChevronDown className="w-5 h-5" />
-              )}
-            </div>
+            <SectionHeader title="Produtos" section="produtos" />
             {expandedSections.produtos && (
-              <div className="space-y-4">
-                <div className="flex gap-2">
-                  <div className="flex-1 relative">
-                    <Label className="text-foreground">Adicionar Produto</Label>
-                    <Input
-                      type="text"
-                      placeholder="Buscar produto..."
-                      value={productSearch}
-                      onChange={(e) => setProductSearch(e.target.value)}
-                      className="mt-1 bg-background border-border"
-                    />
-                    {productSearch && filteredProducts.length > 0 && (
-                      <div className="absolute top-full left-0 right-0 bg-background border border-border rounded-lg mt-1 max-h-40 overflow-y-auto z-10">
-                        {filteredProducts.map((product: any) => (
-                          <button
-                            key={product.id}
-                            type="button"
-                            onClick={() => {
-                              setProductSearch(product.name);
-                            }}
-                            className="w-full text-left px-4 py-2 hover:bg-accent/10 text-foreground"
-                          >
-                            {product.name} - R$ {parseFloat(product.price).toFixed(2)}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex items-end">
-                    <Button
-                      type="button"
-                      onClick={handleAddProduct}
-                      className="bg-accent text-background hover:bg-accent/90 gap-2"
-                    >
-                      <Plus className="w-4 h-4" />
-                      Adicionar
-                    </Button>
-                  </div>
+              <div className="space-y-3">
+                {/* Cabeçalho da tabela */}
+                <div className="hidden md:grid grid-cols-12 gap-2 px-2 text-xs text-muted-foreground font-medium uppercase tracking-wide">
+                  <div className="col-span-3">Produto</div>
+                  <div className="col-span-3">Detalhes</div>
+                  <div className="col-span-1 text-center">Qtd</div>
+                  <div className="col-span-2 text-right">Valor (R$)</div>
+                  <div className="col-span-1 text-right">Desc (%)</div>
+                  <div className="col-span-1 text-right">Subtotal</div>
+                  <div className="col-span-1"></div>
                 </div>
 
+                {osProducts.map((product) => (
+                  <div key={product.id} className="grid grid-cols-12 gap-2 items-center p-2 bg-background/50 rounded-lg border border-border/30">
+                    <div className="col-span-12 md:col-span-3">
+                      <Input
+                        type="text"
+                        placeholder="Nome do produto"
+                        value={product.name}
+                        onChange={(e) => handleUpdateProduct(product.id, "name", e.target.value)}
+                        className="bg-background border-border text-sm"
+                      />
+                    </div>
+                    <div className="col-span-12 md:col-span-3">
+                      <Input
+                        type="text"
+                        placeholder="Detalhes"
+                        value={product.details}
+                        onChange={(e) => handleUpdateProduct(product.id, "details", e.target.value)}
+                        className="bg-background border-border text-sm"
+                      />
+                    </div>
+                    <div className="col-span-4 md:col-span-1">
+                      <Input
+                        type="number"
+                        min="1"
+                        value={product.quantity}
+                        onChange={(e) => handleUpdateProduct(product.id, "quantity", parseInt(e.target.value) || 1)}
+                        className="bg-background border-border text-center text-sm"
+                      />
+                    </div>
+                    <div className="col-span-4 md:col-span-2">
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="0,00"
+                        value={product.price || ""}
+                        onChange={(e) => handleUpdateProduct(product.id, "price", parseFloat(e.target.value) || 0)}
+                        className="bg-background border-border text-right text-sm"
+                      />
+                    </div>
+                    <div className="col-span-3 md:col-span-1">
+                      <Input
+                        type="number"
+                        min="0"
+                        max="100"
+                        placeholder="0"
+                        value={product.discount || ""}
+                        onChange={(e) => handleUpdateProduct(product.id, "discount", parseFloat(e.target.value) || 0)}
+                        className="bg-background border-border text-right text-sm"
+                      />
+                    </div>
+                    <div className="col-span-10 md:col-span-1 text-right">
+                      <span className="text-sm font-bold text-accent">
+                        R$ {calcSubtotal(product).toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="col-span-2 md:col-span-1 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveProduct(product.id)}
+                        className="p-1.5 text-red-400 hover:bg-red-500/10 rounded"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleAddProductRow}
+                  className="w-full border-dashed border-border/50 text-muted-foreground hover:text-foreground gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  Adicionar Produto
+                </Button>
+
                 {osProducts.length > 0 && (
-                  <div className="space-y-2">
-                    {osProducts.map((product) => (
-                      <div key={product.id} className="flex gap-2 items-center p-3 bg-background/50 rounded-lg">
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-foreground">{product.name}</p>
-                        </div>
-                        <div className="flex gap-2 items-center">
-                          <Input
-                            type="number"
-                            min="1"
-                            value={product.quantity}
-                            onChange={(e) =>
-                              handleUpdateProduct(product.id, "quantity", parseInt(e.target.value))
-                            }
-                            className="w-16 bg-background border-border text-center"
-                          />
-                          <span className="text-sm text-muted-foreground">×</span>
-                          <span className="text-sm font-medium text-accent">
-                            R$ {product.price.toFixed(2)}
-                          </span>
-                          <span className="text-sm text-muted-foreground">=</span>
-                          <span className="text-sm font-bold text-accent">
-                            R$ {(product.quantity * product.price).toFixed(2)}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveProduct(product.id)}
-                            className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                  <div className="flex justify-end pt-2 border-t border-border/30">
+                    <p className="text-sm text-muted-foreground">
+                      Total Produtos: <span className="text-accent font-bold text-base ml-2">R$ {totalProducts.toFixed(2)}</span>
+                    </p>
                   </div>
                 )}
               </div>
             )}
           </Card>
 
-          {/* RESUMO */}
+          {/* RESUMO FINANCEIRO */}
           <Card className="card-float p-6 bg-accent/5 border-accent/30">
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <p className="text-sm text-muted-foreground">Serviços</p>
-                <p className="text-2xl font-bold text-accent">R$ {totalServices.toFixed(2)}</p>
+            <SectionHeader title="Resumo Financeiro" section="resumo" />
+            {expandedSections.resumo && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div>
+                    <Label className="text-foreground text-sm">Mão de Obra (R$)</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="0,00"
+                      value={formData.laborCost}
+                      onChange={(e) => handleChange("laborCost", e.target.value)}
+                      className="mt-1 bg-background border-border"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-foreground text-sm">Frete (R$)</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="0,00"
+                      value={formData.shippingCost}
+                      onChange={(e) => handleChange("shippingCost", e.target.value)}
+                      className="mt-1 bg-background border-border"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-foreground text-sm">Outros (R$)</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="0,00"
+                      value={formData.otherCosts}
+                      onChange={(e) => handleChange("otherCosts", e.target.value)}
+                      className="mt-1 bg-background border-border"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-foreground text-sm">Desconto (R$)</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="0,00"
+                      value={formData.discount}
+                      onChange={(e) => handleChange("discount", e.target.value)}
+                      className="mt-1 bg-background border-border"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-accent/20">
+                  <div className="text-center">
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Serviços</p>
+                    <p className="text-xl font-bold text-accent">R$ {totalServices.toFixed(2)}</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Produtos</p>
+                    <p className="text-xl font-bold text-accent">R$ {totalProducts.toFixed(2)}</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Subtotal</p>
+                    <p className="text-xl font-bold text-foreground">R$ {subtotalGeral.toFixed(2)}</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Total</p>
+                    <p className="text-2xl font-bold text-accent">R$ {totalGeral.toFixed(2)}</p>
+                  </div>
+                </div>
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Produtos</p>
-                <p className="text-2xl font-bold text-accent">R$ {totalProducts.toFixed(2)}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Total</p>
-                <p className="text-2xl font-bold text-accent">R$ {total.toFixed(2)}</p>
-              </div>
-            </div>
+            )}
           </Card>
 
           {/* OBSERVAÇÕES */}
           <Card className="card-float p-6">
-            <div
-              className="flex items-center justify-between cursor-pointer mb-4"
-              onClick={() => toggleSection("observacoes")}
-            >
-              <h2 className="text-xl font-bold text-foreground">Observações</h2>
-              {expandedSections.observacoes ? (
-                <ChevronUp className="w-5 h-5" />
-              ) : (
-                <ChevronDown className="w-5 h-5" />
-              )}
-            </div>
+            <SectionHeader title="Observações" section="observacoes" />
             {expandedSections.observacoes && (
               <div className="space-y-4">
+                <div>
+                  <Label className="text-foreground">Solução Proposta</Label>
+                  <Textarea
+                    placeholder="Descreva a solução proposta..."
+                    value={formData.proposedSolution}
+                    onChange={(e) => handleChange("proposedSolution", e.target.value)}
+                    className="mt-1 bg-background border-border"
+                  />
+                </div>
+                <div>
+                  <Label className="text-foreground">Laudo Técnico</Label>
+                  <Textarea
+                    placeholder="Laudo técnico..."
+                    value={formData.technicalReport}
+                    onChange={(e) => handleChange("technicalReport", e.target.value)}
+                    className="mt-1 bg-background border-border"
+                  />
+                </div>
                 <div>
                   <Label className="text-foreground">Observações Públicas</Label>
                   <Textarea
@@ -1044,15 +1095,9 @@ export default function OSForm() {
               disabled={loading || !formData.clientId}
             >
               {loading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Salvando...
-                </>
+                <><Loader2 className="w-4 h-4 animate-spin" />Salvando...</>
               ) : (
-                <>
-                  <Save className="w-4 h-4" />
-                  Salvar Ordem
-                </>
+                <><Save className="w-4 h-4" />Salvar Ordem</>
               )}
             </Button>
           </div>

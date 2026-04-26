@@ -50,6 +50,20 @@
       "when": 1777208401046,
       "tag": "0006_pink_madame_masque",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1777237234630,
+      "tag": "0007_smooth_thunderbolts",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1777237719304,
+      "tag": "0008_flawless_tigra",
+      "breakpoints": true
     }
   ]
 }

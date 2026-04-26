@@ -162,6 +162,21 @@ export const appRouter = router({
         publicNotes: z.string().optional(),
         internalNotes: z.string().optional(),
         total: z.string().optional(),
+        // Novos campos extras
+        origin: z.enum(["advertisement", "client", "referral", "bni", "new_client"]).optional(),
+        missingKeyboard: z.enum(["yes", "no"]).optional(),
+        crackedScreen: z.enum(["yes", "no"]).optional(),
+        missingCharger: z.enum(["yes", "no"]).optional(),
+        missingBag: z.enum(["yes", "no"]).optional(),
+        poweringOn: z.enum(["yes", "no"]).optional(),
+        missingPowerCable: z.enum(["yes", "no"]).optional(),
+        password: z.string().optional(),
+        // Resumo financeiro
+        laborCost: z.string().optional(),
+        partsCost: z.string().optional(),
+        shippingCost: z.string().optional(),
+        otherCosts: z.string().optional(),
+        discount: z.string().optional(),
       }))
       .mutation(({ input }) => db.createOrder(input)),
     update: publicProcedure
@@ -190,6 +205,21 @@ export const appRouter = router({
           publicNotes: z.string().optional(),
           internalNotes: z.string().optional(),
           total: z.string().optional(),
+          // Novos campos extras
+          origin: z.enum(["advertisement", "client", "referral", "bni", "new_client"]).optional(),
+          missingKeyboard: z.enum(["yes", "no"]).optional(),
+          crackedScreen: z.enum(["yes", "no"]).optional(),
+          missingCharger: z.enum(["yes", "no"]).optional(),
+          missingBag: z.enum(["yes", "no"]).optional(),
+          poweringOn: z.enum(["yes", "no"]).optional(),
+          missingPowerCable: z.enum(["yes", "no"]).optional(),
+          password: z.string().optional(),
+          // Resumo financeiro
+          laborCost: z.string().optional(),
+          partsCost: z.string().optional(),
+          shippingCost: z.string().optional(),
+          otherCosts: z.string().optional(),
+          discount: z.string().optional(),
         }),
       }))
       .mutation(({ input }) => db.updateOrder(input.id, input.data)),
@@ -338,8 +368,10 @@ export const appRouter = router({
         orderId: z.number(),
         type: z.enum(["service", "product"]),
         description: z.string(),
+        details: z.string().optional(),
         quantity: z.number(),
         unitPrice: z.string(),
+        discount: z.string().optional(),
         total: z.string(),
       }))
       .mutation(({ input }) => db.createOrderItem(input)),

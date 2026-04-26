@@ -137,6 +137,24 @@ export const orders = mysqlTable("orders", {
   publicNotes: text("publicNotes"),
   internalNotes: text("internalNotes"),
   total: decimal("total", { precision: 12, scale: 2 }).default("0"),
+  
+  // Novos campos extras (origem, condições do equipamento, etc.)
+  origin: mysqlEnum("origin", ["advertisement", "client", "referral", "bni", "new_client"]),
+  missingKeyboard: mysqlEnum("missingKeyboard", ["yes", "no"]),
+  crackedScreen: mysqlEnum("crackedScreen", ["yes", "no"]),
+  missingCharger: mysqlEnum("missingCharger", ["yes", "no"]),
+  missingBag: mysqlEnum("missingBag", ["yes", "no"]),
+  poweringOn: mysqlEnum("poweringOn", ["yes", "no"]),
+  missingPowerCable: mysqlEnum("missingPowerCable", ["yes", "no"]),
+  password: varchar("password", { length: 255 }),
+  
+  // Resumo financeiro
+  laborCost: decimal("laborCost", { precision: 12, scale: 2 }).default("0"),
+  partsCost: decimal("partsCost", { precision: 12, scale: 2 }).default("0"),
+  shippingCost: decimal("shippingCost", { precision: 12, scale: 2 }).default("0"),
+  otherCosts: decimal("otherCosts", { precision: 12, scale: 2 }).default("0"),
+  discount: decimal("discount", { precision: 12, scale: 2 }).default("0"),
+  
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -150,8 +168,10 @@ export const orderItems = mysqlTable("orderItems", {
   orderId: int("orderId").notNull(),
   type: mysqlEnum("type", ["service", "product"]).notNull(),
   description: varchar("description", { length: 255 }).notNull(),
+  details: text("details"),
   quantity: int("quantity").default(1),
   unitPrice: decimal("unitPrice", { precision: 10, scale: 2 }).notNull(),
+  discount: decimal("discount", { precision: 5, scale: 2 }).default("0"),
   total: decimal("total", { precision: 12, scale: 2 }).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
