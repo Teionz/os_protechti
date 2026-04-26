@@ -117,6 +117,8 @@ export default function OSForm() {
   const [equipmentSearch, setEquipmentSearch] = useState("");
   const [showEquipmentSuggestions, setShowEquipmentSuggestions] = useState(false);
   const [clientSearch, setClientSearch] = useState("");
+  const [serviceDropdownOpen, setServiceDropdownOpen] = useState<Record<number, boolean>>({});
+  const [productDropdownOpen, setProductDropdownOpen] = useState<Record<number, boolean>>({});
   const [equipmentTagError, setEquipmentTagError] = useState("");
   const [checkingTag, setCheckingTag] = useState(false);
 
@@ -783,14 +785,45 @@ export default function OSForm() {
 
                 {osServices.map((service) => (
                   <div key={service.id} className="grid grid-cols-12 gap-2 items-center p-2 bg-background/50 rounded-lg border border-border/30">
-                    <div className="col-span-12 md:col-span-3">
+                    <div className="col-span-12 md:col-span-3 relative">
                       <Input
                         type="text"
                         placeholder="Nome do serviço"
                         value={service.name}
-                        onChange={(e) => handleUpdateService(service.id, "name", e.target.value)}
+                        onChange={(e) => {
+                          handleUpdateService(service.id, "name", e.target.value);
+                          setServiceDropdownOpen(prev => ({ ...prev, [service.id]: true }));
+                        }}
+                        onFocus={() => setServiceDropdownOpen(prev => ({ ...prev, [service.id]: true }))}
+                        onBlur={() => setTimeout(() => setServiceDropdownOpen(prev => ({ ...prev, [service.id]: false })), 150)}
                         className="bg-background border-border text-sm"
+                        autoComplete="off"
                       />
+                      {serviceDropdownOpen[service.id] && service.name && (() => {
+                        const filtered = (services as any[]).filter((s: any) =>
+                          s.name?.toLowerCase().includes(service.name.toLowerCase()) && s.status === "active"
+                        );
+                        return filtered.length > 0 ? (
+                          <div className="absolute top-full left-0 right-0 bg-background border border-border rounded-lg mt-1 max-h-40 overflow-y-auto z-20 shadow-lg">
+                            {filtered.map((s: any) => (
+                              <button
+                                key={s.id}
+                                type="button"
+                                onMouseDown={() => {
+                                  handleUpdateService(service.id, "name", s.name);
+                                  handleUpdateService(service.id, "price", parseFloat(s.price) || 0);
+                                  handleUpdateService(service.id, "details", s.description || "");
+                                  setServiceDropdownOpen(prev => ({ ...prev, [service.id]: false }));
+                                }}
+                                className="w-full text-left px-3 py-2 hover:bg-accent/10 text-foreground border-b border-border/30 last:border-b-0"
+                              >
+                                <div className="text-sm font-medium">{s.name}</div>
+                                <div className="text-xs text-muted-foreground">R$ {parseFloat(s.price).toFixed(2)}{s.description ? ` · ${s.description.substring(0, 40)}` : ""}</div>
+                              </button>
+                            ))}
+                          </div>
+                        ) : null;
+                      })()}
                     </div>
                     <div className="col-span-12 md:col-span-3">
                       <Input
@@ -888,14 +921,45 @@ export default function OSForm() {
 
                 {osProducts.map((product) => (
                   <div key={product.id} className="grid grid-cols-12 gap-2 items-center p-2 bg-background/50 rounded-lg border border-border/30">
-                    <div className="col-span-12 md:col-span-3">
+                    <div className="col-span-12 md:col-span-3 relative">
                       <Input
                         type="text"
                         placeholder="Nome do produto"
                         value={product.name}
-                        onChange={(e) => handleUpdateProduct(product.id, "name", e.target.value)}
+                        onChange={(e) => {
+                          handleUpdateProduct(product.id, "name", e.target.value);
+                          setProductDropdownOpen(prev => ({ ...prev, [product.id]: true }));
+                        }}
+                        onFocus={() => setProductDropdownOpen(prev => ({ ...prev, [product.id]: true }))}
+                        onBlur={() => setTimeout(() => setProductDropdownOpen(prev => ({ ...prev, [product.id]: false })), 150)}
                         className="bg-background border-border text-sm"
+                        autoComplete="off"
                       />
+                      {productDropdownOpen[product.id] && product.name && (() => {
+                        const filtered = (products as any[]).filter((p: any) =>
+                          p.name?.toLowerCase().includes(product.name.toLowerCase())
+                        );
+                        return filtered.length > 0 ? (
+                          <div className="absolute top-full left-0 right-0 bg-background border border-border rounded-lg mt-1 max-h-40 overflow-y-auto z-20 shadow-lg">
+                            {filtered.map((p: any) => (
+                              <button
+                                key={p.id}
+                                type="button"
+                                onMouseDown={() => {
+                                  handleUpdateProduct(product.id, "name", p.name);
+                                  handleUpdateProduct(product.id, "price", parseFloat(p.price) || 0);
+                                  handleUpdateProduct(product.id, "details", p.description || "");
+                                  setProductDropdownOpen(prev => ({ ...prev, [product.id]: false }));
+                                }}
+                                className="w-full text-left px-3 py-2 hover:bg-accent/10 text-foreground border-b border-border/30 last:border-b-0"
+                              >
+                                <div className="text-sm font-medium">{p.name}</div>
+                                <div className="text-xs text-muted-foreground">R$ {parseFloat(p.price).toFixed(2)}{p.description ? ` · ${p.description.substring(0, 40)}` : ""}{p.stock != null ? ` · Estoque: ${p.stock}` : ""}</div>
+                              </button>
+                            ))}
+                          </div>
+                        ) : null;
+                      })()}
                     </div>
                     <div className="col-span-12 md:col-span-3">
                       <Input
