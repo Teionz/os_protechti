@@ -615,6 +615,33 @@ export default function OSForm() {
             )}
           </Card>
 
+          {/* CAMPOS EXTRAS */}
+          <Card className="card-float p-6">
+            <SectionHeader title="Informações Adicionais" section="camposExtras" />
+            {expandedSections.camposExtras && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <YesNoSelect field="missingKeyboard" label="Teclado faltando" />
+                  <YesNoSelect field="crackedScreen" label="Tela trincada" />
+                  <YesNoSelect field="missingCharger" label="Carregador" />
+                  <YesNoSelect field="missingBag" label="Bolsa" />
+                  <YesNoSelect field="poweringOn" label="Ligando" />
+                  <YesNoSelect field="missingPowerCable" label="Cabo de energia" />
+                </div>
+                <div className="max-w-sm">
+                  <Label className="text-foreground">Senha</Label>
+                  <Input
+                    type="text"
+                    placeholder="Senha do dispositivo (se houver)"
+                    value={formData.password}
+                    onChange={(e) => handleChange("password", e.target.value)}
+                    className="mt-1 bg-background border-border"
+                  />
+                </div>
+              </div>
+            )}
+          </Card>
+
           {/* EQUIPAMENTO */}
           <Card className="card-float p-6">
             <SectionHeader title="Equipamento" section="equipamento" />
@@ -735,33 +762,6 @@ export default function OSForm() {
                     placeholder="Laudo técnico..."
                     value={formData.technicalReport}
                     onChange={(e) => handleChange("technicalReport", e.target.value)}
-                    className="mt-1 bg-background border-border"
-                  />
-                </div>
-              </div>
-            )}
-          </Card>
-
-          {/* CAMPOS EXTRAS */}
-          <Card className="card-float p-6">
-            <SectionHeader title="Informações Adicionais" section="camposExtras" />
-            {expandedSections.camposExtras && (
-              <div className="space-y-6">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <YesNoSelect field="missingKeyboard" label="Teclado faltando" />
-                  <YesNoSelect field="crackedScreen" label="Tela trincada" />
-                  <YesNoSelect field="missingCharger" label="Carregador" />
-                  <YesNoSelect field="missingBag" label="Bolsa" />
-                  <YesNoSelect field="poweringOn" label="Ligando" />
-                  <YesNoSelect field="missingPowerCable" label="Cabo de energia" />
-                </div>
-                <div className="max-w-sm">
-                  <Label className="text-foreground">Senha</Label>
-                  <Input
-                    type="text"
-                    placeholder="Senha do dispositivo (se houver)"
-                    value={formData.password}
-                    onChange={(e) => handleChange("password", e.target.value)}
                     className="mt-1 bg-background border-border"
                   />
                 </div>
