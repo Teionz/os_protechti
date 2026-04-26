@@ -405,6 +405,12 @@ export async function deleteEquipment(id: number) {
 }
 
 // Itens de Ordem de Serviço
+export async function getOrderItems(orderId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(orderItems).where(eq(orderItems.orderId, orderId));
+}
+
 export async function createOrderItem(data: InsertOrderItem) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -417,4 +423,10 @@ export async function deleteOrderItem(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   return db.delete(orderItems).where(eq(orderItems.id, id));
+}
+
+export async function deleteOrderItemsByOrderId(orderId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.delete(orderItems).where(eq(orderItems.orderId, orderId));
 }

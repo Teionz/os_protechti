@@ -39,8 +39,12 @@ export default function OSForm() {
     isEditing ? parseInt(params?.id as string) : undefined as any,
     { enabled: !!isEditing }
   );
+  const { data: existingOrderItems = [], isLoading: orderItemsLoading } = trpc.orderItems.getByOrderId.useQuery(
+    isEditing ? parseInt(params?.id as string) : undefined as any,
+    { enabled: !!isEditing }
+  );
 
-  const isLoadingData = clientsLoading || servicesLoading || productsLoading || (isEditing && orderLoading);
+  const isLoadingData = clientsLoading || servicesLoading || productsLoading || (isEditing && orderLoading) || (isEditing && orderItemsLoading);
 
   // Gerar orderNumber uma única vez (ou usar existente se editando)
   const orderNumber = useMemo(() => {
@@ -108,8 +112,32 @@ export default function OSForm() {
         publicNotes: existingOrder.publicNotes || "",
         internalNotes: existingOrder.internalNotes || "",
       } as any);
+
+      // Carregar serviços e produtos da OS
+      if (existingOrderItems && existingOrderItems.length > 0) {
+        const servicesFromOrder = existingOrderItems
+          .filter((item: any) => item.type === "service")
+          .map((item: any) => ({
+            id: item.id,
+            name: item.description,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            total: item.total,
+          }));
+        const productsFromOrder = existingOrderItems
+          .filter((item: any) => item.type === "product")
+          .map((item: any) => ({
+            id: item.id,
+            name: item.description,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            total: item.total,
+          }));
+        setOsServices(servicesFromOrder);
+        setOsProducts(productsFromOrder);
+      }
     }
-  }, [isEditing, existingOrder]);
+  }, [isEditing, existingOrder, existingOrderItems]);
 
   const toggleSection = (section: string) => {
     setExpandedSections({

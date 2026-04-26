@@ -330,6 +330,7 @@ export const appRouter = router({
 
   // Itens de Ordem de Serviço
   orderItems: router({
+    getByOrderId: publicProcedure.input(z.number()).query(({ input }) => db.getOrderItems(input)),
     create: publicProcedure
       .input(z.object({
         orderId: z.number(),
