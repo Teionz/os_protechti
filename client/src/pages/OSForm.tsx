@@ -89,6 +89,7 @@ export default function OSForm() {
   const updateOrderMutation = trpc.orders.update.useMutation();
   const createOrderItemMutation = trpc.orderItems.create.useMutation();
   const deleteOrderItemMutation = trpc.orderItems.delete.useMutation();
+  const deleteOrderItemsByOrderIdMutation = trpc.orderItems.deleteByOrderId.useMutation();
   const createEquipmentMutation = trpc.equipments.create.useMutation();
 
   // Carregar dados da OS se estiver editando
@@ -353,7 +354,7 @@ export default function OSForm() {
       // 2. Se estiver editando, deletar todos os orderItems antigos primeiro
       if (isEditing && order.id) {
         try {
-          await trpc.orderItems.deleteByOrderId.useMutation().mutateAsync(order.id);
+          await deleteOrderItemsByOrderIdMutation.mutateAsync(order.id);
         } catch (error) {
           console.error("Erro ao deletar itens antigos:", error);
         }
