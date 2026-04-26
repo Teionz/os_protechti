@@ -226,3 +226,23 @@ export const saleItems = mysqlTable("saleItems", {
 
 export type SaleItem = typeof saleItems.$inferSelect;
 export type InsertSaleItem = typeof saleItems.$inferInsert;
+
+// Equipamentos do Cliente
+export const equipments = mysqlTable("equipments", {
+  id: int("id").autoincrement().primaryKey(),
+  clientId: int("clientId").notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  brand: varchar("brand", { length: 100 }),
+  model: varchar("model", { length: 100 }),
+  serial: varchar("serial", { length: 100 }).unique(),
+  category: varchar("category", { length: 100 }),
+  description: text("description"),
+  purchaseDate: timestamp("purchaseDate"),
+  warrantyDate: timestamp("warrantyDate"),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Equipment = typeof equipments.$inferSelect;
+export type InsertEquipment = typeof equipments.$inferInsert;

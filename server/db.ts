@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, clients, InsertClient, products, InsertProduct, services, InsertService, orders, InsertOrder, quotations, InsertQuotation, sales, InsertSale, suppliers, InsertSupplier } from "../drizzle/schema";
+import { InsertUser, users, clients, InsertClient, products, InsertProduct, services, InsertService, orders, InsertOrder, quotations, InsertQuotation, sales, InsertSale, suppliers, InsertSupplier, equipments, InsertEquipment, orderItems, InsertOrderItem } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -312,4 +312,59 @@ export async function deleteSupplier(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   return db.delete(suppliers).where(eq(suppliers.id, id));
+}
+
+// Equipamentos
+export async function getEquipments() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(equipments);
+}
+
+export async function getEquipmentById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(equipments).where(eq(equipments.id, id)).limit(1);
+  return result[0];
+}
+
+export async function getEquipmentsByClientId(clientId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(equipments).where(eq(equipments.clientId, clientId));
+}
+
+export async function createEquipment(data: InsertEquipment) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(equipments).values(data);
+  const id = (result as any).insertId;
+  return { id, ...data };
+}
+
+export async function updateEquipment(id: number, data: Partial<InsertEquipment>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.update(equipments).set(data).where(eq(equipments.id, id));
+}
+
+export async function deleteEquipment(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.delete(equipments).where(eq(equipments.id, id));
+}
+
+// Itens de Ordem de Serviço
+export async function createOrderItem(data: InsertOrderItem) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(orderItems).values(data);
+  const id = (result as any).insertId;
+  return { id, ...data };
+}
+
+export async function deleteOrderItem(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.delete(orderItems).where(eq(orderItems.id, id));
 }

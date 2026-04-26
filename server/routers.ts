@@ -1,9 +1,9 @@
-import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import * as db from "./db";
+import { COOKIE_NAME } from "../shared/const";
 
 export const appRouter = router({
   system: systemRouter,
@@ -324,6 +324,60 @@ export const appRouter = router({
       }))
       .mutation(({ input }) => db.updateSupplier(input.id, input.data)),
     delete: publicProcedure.input(z.number()).mutation(({ input }) => db.deleteSupplier(input)),
+  }),
+
+  // Itens de Ordem de Serviço
+  orderItems: router({
+    create: publicProcedure
+      .input(z.object({
+        orderId: z.number(),
+        type: z.enum(["service", "product"]),
+        description: z.string(),
+        quantity: z.number(),
+        unitPrice: z.string(),
+        total: z.string(),
+      }))
+      .mutation(({ input }) => db.createOrderItem(input)),
+    delete: publicProcedure.input(z.number()).mutation(({ input }) => db.deleteOrderItem(input)),
+  }),
+
+  // Equipamentos
+  equipments: router({
+    list: publicProcedure.query(() => db.getEquipments()),
+    get: publicProcedure.input(z.number()).query(({ input }) => db.getEquipmentById(input)),
+    getByClientId: publicProcedure.input(z.number()).query(({ input }) => db.getEquipmentsByClientId(input)),
+    create: publicProcedure
+      .input(z.object({
+        clientId: z.number(),
+        name: z.string(),
+        brand: z.string().optional(),
+        model: z.string().optional(),
+        serial: z.string().optional(),
+        category: z.string().optional(),
+        description: z.string().optional(),
+        purchaseDate: z.date().optional(),
+        warrantyDate: z.date().optional(),
+        notes: z.string().optional(),
+      }))
+      .mutation(({ input }) => db.createEquipment(input)),
+    update: publicProcedure
+      .input(z.object({
+        id: z.number(),
+        data: z.object({
+          clientId: z.number().optional(),
+          name: z.string().optional(),
+          brand: z.string().optional(),
+          model: z.string().optional(),
+          serial: z.string().optional(),
+          category: z.string().optional(),
+          description: z.string().optional(),
+          purchaseDate: z.date().optional(),
+          warrantyDate: z.date().optional(),
+          notes: z.string().optional(),
+        }),
+      }))
+      .mutation(({ input }) => db.updateEquipment(input.id, input.data)),
+    delete: publicProcedure.input(z.number()).mutation(({ input }) => db.deleteEquipment(input)),
   }),
 });
 
