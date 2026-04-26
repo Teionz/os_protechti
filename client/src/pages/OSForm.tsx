@@ -81,8 +81,7 @@ export default function OSForm() {
   const [clientSearch, setClientSearch] = useState("");
   const [serviceSearch, setServiceSearch] = useState("");
   const [productSearch, setProductSearch] = useState("");
-  const hydratedRef = useRef(false);
-  const currentOrderIdRef = useRef<number | null>(null);
+
 
   // Mutations - declaradas no topo do componente
   const createOrderMutation = trpc.orders.create.useMutation();
@@ -94,16 +93,6 @@ export default function OSForm() {
 
   // Carregar dados da OS se estiver editando
   useEffect(() => {
-    // Se mudou de OS, resetar flag de hidratação
-    const orderId = isEditing ? parseInt(params?.id as string) : null;
-    if (currentOrderIdRef.current !== orderId) {
-      hydratedRef.current = false;
-      currentOrderIdRef.current = orderId;
-    }
-
-    // Só hidratar uma vez por OS
-    if (hydratedRef.current) return;
-
     if (isEditing && existingOrder) {
       setFormData({
         clientId: existingOrder.clientId?.toString() || "",
@@ -150,7 +139,6 @@ export default function OSForm() {
         setOsServices(servicesFromOrder);
         setOsProducts(productsFromOrder);
       }
-      hydratedRef.current = true;
     }
   }, [isEditing, existingOrder, existingOrderItems, params?.id]);
 
