@@ -88,11 +88,11 @@ export default function OSForm() {
     publicNotes: "",
     internalNotes: "",
     // Financeiro
-    laborCost: "",
-    partsCost: "",
-    shippingCost: "",
-    otherCosts: "",
-    discount: "",
+    laborCost: "0",
+    partsCost: "0",
+    shippingCost: "0",
+    otherCosts: "0",
+    discount: "0",
   });
 
   // Itens de serviço e produto com campos manuais
@@ -121,6 +121,8 @@ export default function OSForm() {
   const [productDropdownOpen, setProductDropdownOpen] = useState<Record<number, boolean>>({});
   const [equipmentTagError, setEquipmentTagError] = useState("");
   const [checkingTag, setCheckingTag] = useState(false);
+  // Rastreia se o equipamento foi selecionado de um já cadastrado (não deve validar etiqueta)
+  const [selectedEquipmentId, setSelectedEquipmentId] = useState<number | null>(null);
 
   // Buscar equipamentos do cliente
   const { data: clientEquipments = [] } = trpc.equipments.searchByClientId.useQuery(
@@ -245,6 +247,9 @@ export default function OSForm() {
     }));
     setEquipmentSearch(equipment.name);
     setShowEquipmentSuggestions(false);
+    // Marcar que este equipamento já existe no sistema - não validar etiqueta
+    setSelectedEquipmentId(equipment.id || null);
+    setEquipmentTagError("");
   };
 
   const filteredClients = clients.filter((client: any) =>
@@ -303,7 +308,8 @@ export default function OSForm() {
     e.preventDefault();
     if (!formData.clientId) { toast.error("Selecione um cliente"); return; }
 
-    if (formData.equipmentTag) {
+    // Só valida etiqueta se o equipamento não foi selecionado de um já cadastrado
+    if (formData.equipmentTag && !selectedEquipmentId) {
       const isTagValid = await validateEquipmentTag(formData.equipmentTag, isEditing ? parseInt(params?.id as string) : undefined);
       if (!isTagValid) { toast.error("Etiqueta de controle duplicada. Escolha outra etiqueta."); return; }
     }
@@ -311,8 +317,10 @@ export default function OSForm() {
     setLoading(true);
     try {
       // 0. Salvar equipamento primeiro
+      // Se selectedEquipmentId estiver definido, o equipamento já existe - não criar novamente
       const hasEquipmentData = formData.equipmentName || formData.equipmentBrand || formData.equipmentModel || formData.equipmentSerial || formData.equipmentTag;
-      if (hasEquipmentData) {
+      if (hasEquipmentData && !selectedEquipmentId) {
+        // Equipamento novo: verificar se etiqueta já existe por nome/tag para evitar duplicata
         let equipmentExists = false;
         if (formData.equipmentTag) {
           const existing = await utils.equipments.searchByClientId.fetch({ clientId: parseInt(formData.clientId), query: formData.equipmentTag });
@@ -349,13 +357,13 @@ export default function OSForm() {
         equipmentCondition: formData.equipmentCondition,
         reportedDefects: formData.reportedDefects,
         accessories: formData.accessories,
-        origin: formData.origin as any,
-        missingKeyboard: formData.missingKeyboard as any,
-        crackedScreen: formData.crackedScreen as any,
-        missingCharger: formData.missingCharger as any,
-        missingBag: formData.missingBag as any,
-        poweringOn: formData.poweringOn as any,
-        missingPowerCable: formData.missingPowerCable as any,
+        origin: (formData.origin as "advertisement" | "client" | "referral" | "bni" | "new_client") || null,
+        missingKeyboard: (formData.missingKeyboard as "yes" | "no") || null,
+        crackedScreen: (formData.crackedScreen as "yes" | "no") || null,
+        missingCharger: (formData.missingCharger as "yes" | "no") || null,
+        missingBag: (formData.missingBag as "yes" | "no") || null,
+        poweringOn: (formData.poweringOn as "yes" | "no") || null,
+        missingPowerCable: (formData.missingPowerCable as "yes" | "no") || null,
         password: formData.password,
         proposedSolution: formData.proposedSolution,
         technicalReport: formData.technicalReport,
@@ -688,6 +696,8 @@ export default function OSForm() {
                     value={formData.equipmentTag}
                     onChange={(e) => {
                       handleChange("equipmentTag", e.target.value);
+                      // Se o usuário editar manualmente, resetar o equipamento selecionado
+                      setSelectedEquipmentId(null);
                       if (e.target.value) {
                         validateEquipmentTag(e.target.value, isEditing ? parseInt(params?.id as string) : undefined);
                       } else {
