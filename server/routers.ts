@@ -136,8 +136,8 @@ export const appRouter = router({
 
   // Ordens de Serviço
   orders: router({
-    list: publicProcedure.query(() => db.getOrders()),
-    get: publicProcedure.input(z.number()).query(({ input }) => db.getOrderById(input)),
+    list: publicProcedure.query(() => db.getOrdersWithClient()),
+    get: publicProcedure.input(z.number()).query(({ input }) => db.getOrderByIdWithClient(input)),
     create: publicProcedure
       .input(z.object({
         orderNumber: z.string(),
@@ -192,6 +192,8 @@ export const appRouter = router({
       }))
       .mutation(({ input }) => db.updateOrder(input.id, input.data)),
     delete: publicProcedure.input(z.number()).mutation(({ input }) => db.deleteOrder(input)),
+    listRaw: publicProcedure.query(() => db.getOrders()),
+    getRaw: publicProcedure.input(z.number()).query(({ input }) => db.getOrderById(input)),
   }),
 
   // Orçamentos

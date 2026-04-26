@@ -198,11 +198,48 @@ export async function getOrders() {
   return db.select().from(orders);
 }
 
+export async function getOrdersWithClient() {
+  const db = await getDb();
+  if (!db) return [];
+  const result = await db
+    .select({
+      order: orders,
+      client: clients,
+    })
+    .from(orders)
+    .leftJoin(clients, eq(orders.clientId, clients.id));
+  
+  return result.map((row) => ({
+    ...row.order,
+    client: row.client || null,
+  }));
+}
+
 export async function getOrderById(id: number) {
   const db = await getDb();
   if (!db) return undefined;
   const result = await db.select().from(orders).where(eq(orders.id, id)).limit(1);
   return result[0];
+}
+
+export async function getOrderByIdWithClient(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db
+    .select({
+      order: orders,
+      client: clients,
+    })
+    .from(orders)
+    .leftJoin(clients, eq(orders.clientId, clients.id))
+    .where(eq(orders.id, id))
+    .limit(1);
+  
+  if (!result[0]) return undefined;
+  return {
+    ...result[0].order,
+    client: result[0].client || null,
+  };
 }
 
 export async function createOrder(data: InsertOrder) {
