@@ -411,7 +411,8 @@ export const appRouter = router({
           e.model?.toLowerCase().includes(lowerQuery) ||
           e.serial?.toLowerCase().includes(lowerQuery)
         );
-      })
+      }),
+    deleteAll: publicProcedure.mutation(() => db.deleteAllEquipments()),
   }),
 });
 

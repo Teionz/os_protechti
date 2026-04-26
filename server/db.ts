@@ -404,6 +404,12 @@ export async function deleteEquipment(id: number) {
   return db.delete(equipments).where(eq(equipments.id, id));
 }
 
+export async function deleteAllEquipments() {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.delete(equipments);
+}
+
 // Itens de Ordem de Serviço
 export async function getOrderItems(orderId: number) {
   const db = await getDb();
