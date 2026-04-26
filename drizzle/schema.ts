@@ -234,7 +234,7 @@ export const equipments = mysqlTable("equipments", {
   name: varchar("name", { length: 255 }).notNull(),
   brand: varchar("brand", { length: 100 }),
   model: varchar("model", { length: 100 }),
-  serial: varchar("serial", { length: 100 }).unique(),
+  serial: varchar("serial", { length: 100 }),
   category: varchar("category", { length: 100 }),
   description: text("description"),
   purchaseDate: timestamp("purchaseDate"),

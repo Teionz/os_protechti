@@ -1,0 +1,1 @@
+ALTER TABLE `equipments` DROP INDEX `equipments_serial_unique`;

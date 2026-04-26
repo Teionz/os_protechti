@@ -29,6 +29,13 @@
       "when": 1777200338031,
       "tag": "0003_freezing_rictor",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1777205545699,
+      "tag": "0004_shallow_komodo",
+      "breakpoints": true
     }
   ]
 }
