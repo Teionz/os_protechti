@@ -36,3 +36,35 @@
 - [x] Dashboard com estatísticas
 - [ ] Relatórios de OS por período
 - [ ] Exportar OS em PDF
+
+## Ações na Ordem de Serviço (Menu)
+
+### Documentos e Impressão
+- [ ] Link de cobrança (gerar link de pagamento)
+- [ ] Imprimir (gerar PDF para impressão)
+- [ ] Formato A4 (exportar em tamanho A4)
+- [ ] Cupom (gerar cupom fiscal)
+- [ ] Etiqueta (gerar etiqueta de identificação)
+- [ ] Produção (gerar ordem de produção/serviço)
+
+### Gerenciamento de Status
+- [ ] Alterar situação (mudar status da OS)
+- [ ] Compartilhar (enviar OS para outro usuário/departamento)
+  - [ ] Via E-mail
+  - [ ] Via WhatsApp
+
+### Assinatura e Documentos
+- [ ] Emitir (gerar documento oficial)
+- [ ] e-Assinatura (assinar digitalmente)
+- [ ] Atividade (registrar atividades/atualizações)
+- [ ] Compromisso (registrar compromissos/prazos)
+- [ ] Cópia (duplicar OS)
+- [ ] Devolução (processar devolução de equipamento)
+
+### Notas Fiscais (Implementar por último)
+- [ ] NFS-e (Nota Fiscal de Serviço eletrônica)
+- [ ] NF-e (Nota Fiscal eletrônica)
+- [ ] NFC-e (Nota Fiscal do Consumidor eletrônica)
+
+### Relatórios
+- [ ] Gerar (gerar relatórios da OS)
