@@ -72,7 +72,11 @@ export default function OSDetail() {
   };
 
   const handlePrint = () => {
-    if (!printRef.current) return;
+    const element = document.querySelector('[class*="container"]');
+    if (!element) {
+      alert('Conteúdo não encontrado para impressão');
+      return;
+    }
     const printWindow = window.open("", "", "height=600,width=800");
     if (!printWindow) return;
     printWindow.document.write("<html><head><title>OS #" + ordem?.id + "</title>");
@@ -84,17 +88,20 @@ export default function OSDetail() {
       th { background-color: #f2f2f2; }
     </style>`);
     printWindow.document.write("</head><body>");
-    printWindow.document.write(printRef.current.innerHTML);
+    printWindow.document.write(element.innerHTML);
     printWindow.document.write("</body></html>");
     printWindow.document.close();
     printWindow.print();
   };
 
   const handleDownloadPDF = async () => {
-    if (!printRef.current) return;
+    const element = document.querySelector('[class*="container"]');
+    if (!element) {
+      alert('Conteúdo não encontrado para PDF');
+      return;
+    }
     try {
       const html2pdf = (await import("html2pdf.js")).default;
-      const element = printRef.current;
       const opt = {
         margin: 10,
         filename: `OS_${ordem?.id}.pdf`,
@@ -126,7 +133,7 @@ export default function OSDetail() {
 
   return (
     <Layout>
-      <div className="container py-8 max-w-4xl">
+      <div className="container py-8 max-w-4xl" ref={printRef}>
         {/* Page Title */}
         <div className="mb-8 flex items-center justify-between">
           <div>
