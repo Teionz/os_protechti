@@ -4,6 +4,7 @@ import Layout from "@/components/Layout";
 import { Edit, Printer, Download, Loader2 } from "lucide-react";
 import { useLocation, useRoute } from "wouter";
 import { trpc } from "@/lib/trpc";
+import { useRef } from "react";
 
 /**
  * OSDetail - Visualização detalhada de uma Ordem de Serviço
@@ -13,6 +14,7 @@ export default function OSDetail() {
   const [, navigate] = useLocation();
   const [match, params] = useRoute("/os/:id");
   const osId = params?.id ? parseInt(params.id) : null;
+  const printRef = useRef<HTMLDivElement>(null);
 
   // Buscar dados da OS do banco
   const { data: ordem, isLoading, error } = trpc.orders.get.useQuery(osId!, {
@@ -69,6 +71,44 @@ export default function OSDetail() {
     return `${d.toLocaleDateString("pt-BR")} - ${d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
   };
 
+  const handlePrint = () => {
+    if (!printRef.current) return;
+    const printWindow = window.open("", "", "height=600,width=800");
+    if (!printWindow) return;
+    printWindow.document.write("<html><head><title>OS #" + ordem?.id + "</title>");
+    printWindow.document.write(`<style>
+      body { font-family: Arial, sans-serif; margin: 20px; background: white; color: black; }
+      h1, h2 { color: #333; }
+      table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+      th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+      th { background-color: #f2f2f2; }
+    </style>`);
+    printWindow.document.write("</head><body>");
+    printWindow.document.write(printRef.current.innerHTML);
+    printWindow.document.write("</body></html>");
+    printWindow.document.close();
+    printWindow.print();
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!printRef.current) return;
+    try {
+      const html2pdf = (await import("html2pdf.js")).default;
+      const element = printRef.current;
+      const opt = {
+        margin: 10,
+        filename: `OS_${ordem?.id}.pdf`,
+        image: { type: "png" as const, quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { orientation: "portrait" as const, unit: "mm", format: "a4" },
+      };
+      (html2pdf() as any).set(opt).from(element).save();
+    } catch (error) {
+      console.error("Erro ao gerar PDF:", error);
+      alert("Erro ao gerar PDF. Tente novamente.");
+    }
+  };
+
   // Separar serviços e produtos
   const servicos = orderItems.filter((item) => item.type === "service");
   const produtos = orderItems.filter((item) => item.type === "product");
@@ -104,7 +144,7 @@ export default function OSDetail() {
               <Edit className="w-4 h-4" />
               Editar
             </Button>
-            <Button className="btn-glow gap-2">
+            <Button onClick={handlePrint} className="btn-glow gap-2">
               <Printer className="w-4 h-4" />
               Imprimir
             </Button>
@@ -128,12 +168,11 @@ export default function OSDetail() {
                ordem.status}
             </span>
           </div>
-          <Button variant="outline" className="gap-2">
+          <Button onClick={handleDownloadPDF} variant="outline" className="gap-2">
             <Download className="w-4 h-4" />
             Baixar PDF
           </Button>
         </div>
-
         {/* Cabeçalho */}
         <Card className="card-float p-8 mb-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
