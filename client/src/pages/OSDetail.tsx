@@ -1,134 +1,69 @@
-import { Edit, Printer, Download, Loader2 } from "lucide-react";
-import { useLocation, useRoute } from "wouter";
+import { useRoute } from "wouter";
+import { Button } from "@/components/ui/button";
+import { useRef } from "react";
+import html2pdf from "html2pdf.js";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 import { trpc } from "@/lib/trpc";
-import Layout from "@/components/Layout";
 
-/**
- * OSDetail - Visualização detalhada de uma Ordem de Serviço
- * Design: Layout branco com separações em linhas pretas para impressão
- */
 export default function OSDetail() {
-  const [, navigate] = useLocation();
-  const [match, params] = useRoute("/os/:id");
-  const osId = params?.id ? parseInt(params.id) : null;
+  const [, params] = useRoute("/os/:id");
+  const orderId = params?.id ? parseInt(params.id) : null;
+  const printRef = useRef<HTMLDivElement>(null);
 
-  // Buscar dados da OS do banco
-  const { data: ordem, isLoading, error } = trpc.orders.get.useQuery(osId!, {
-    enabled: !!osId,
-  });
+  const { data: order } = trpc.orders.get.useQuery(
+    orderId!,
+    { enabled: !!orderId }
+  );
 
-  // Buscar itens da OS
-  const { data: orderItems = [] } = trpc.orderItems.getByOrderId.useQuery(osId!, {
-    enabled: !!osId,
-  });
-
-  // Se não encontrou a OS
-  if (!match) {
-    return (
-      <Layout>
-        <div className="container py-8 max-w-4xl">
-          <p className="text-red-500">OS não encontrada</p>
-        </div>
-      </Layout>
-    );
-  }
-
-  if (isLoading) {
-    return (
-      <Layout>
-        <div className="container py-8 max-w-4xl flex items-center justify-center min-h-96">
-          <Loader2 className="w-8 h-8 animate-spin text-accent" />
-          <span className="ml-2 text-foreground">Carregando...</span>
-        </div>
-      </Layout>
-    );
-  }
-
-  if (error || !ordem) {
-    return (
-      <Layout>
-        <div className="container py-8 max-w-4xl">
-          <p className="text-red-500">Erro ao carregar OS: {error?.message || "OS não encontrada"}</p>
-        </div>
-      </Layout>
-    );
-  }
-
-  // Formatar dados para exibição
-  const formatDate = (date: Date | string | null | undefined) => {
-    if (!date) return "-";
-    const d = new Date(date);
-    return d.toLocaleDateString("pt-BR");
-  };
-
-  const formatCurrency = (value: string | number | null | undefined) => {
-    if (!value) return "R$ 0,00";
-    const num = typeof value === "string" ? parseFloat(value) : value;
-    return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(num);
-  };
+  const { data: orderItems } = trpc.orderItems.getByOrderId.useQuery(
+    orderId!,
+    { enabled: !!orderId }
+  );
 
   const handlePrint = () => {
-    const element = document.getElementById("os-print-content");
-    if (!element) {
-      alert("Conteúdo não encontrado para impressão");
+    const printContent = document.querySelector("[data-print-content]");
+    if (!printContent) {
+      alert("Conteúdo para impressão não encontrado");
       return;
     }
     const printWindow = window.open("", "", "height=600,width=800");
-    if (!printWindow) return;
-    printWindow.document.write("<html><head><title>OS #" + ordem?.id + "</title>");
-    printWindow.document.write(`<style>
-      * { margin: 0; padding: 0; box-sizing: border-box; }
-      body { font-family: Arial, sans-serif; background: white; color: black; padding: 20px; }
-      h1 { font-size: 24px; margin-bottom: 20px; border-bottom: 2px solid black; padding-bottom: 10px; }
-      h2 { font-size: 16px; margin-top: 20px; margin-bottom: 10px; border-bottom: 1px solid black; padding-bottom: 8px; }
-      .section { margin-bottom: 20px; }
-      .row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 10px; }
-      .row.full { grid-template-columns: 1fr; }
-      .field { }
-      .label { font-weight: bold; font-size: 12px; color: #666; margin-bottom: 4px; }
-      .value { font-size: 14px; color: black; }
-      table { width: 100%; border-collapse: collapse; margin: 15px 0; }
-      th { background-color: white; border: 1px solid black; padding: 10px; text-align: left; font-weight: bold; font-size: 12px; }
-      td { border: 1px solid black; padding: 10px; font-size: 12px; }
-      .total-row { font-weight: bold; background-color: #f5f5f5; }
-      .summary { margin-top: 20px; border-top: 2px solid black; padding-top: 15px; }
-      .summary-row { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 10px; }
-      .summary-label { font-weight: bold; }
-      .summary-value { text-align: right; }
-      @media print { body { padding: 0; } }
-    </style>`);
-    printWindow.document.write("</head><body>");
-    printWindow.document.write(element.innerHTML);
-    printWindow.document.write("</body></html>");
-    printWindow.document.close();
-    printWindow.print();
+    if (printWindow) {
+      printWindow.document.write(
+        "<html><head><title>Imprimir OS</title><style>" +
+          "body { font-family: Arial, sans-serif; margin: 20px; }" +
+          "table { width: 100%; border-collapse: collapse; margin: 10px 0; }" +
+          "td, th { border: 1px solid #000; padding: 8px; text-align: left; }" +
+          "th { background-color: #f0f0f0; }" +
+          ".section-title { font-weight: bold; margin-top: 15px; border-bottom: 2px solid #000; padding-bottom: 5px; }" +
+          ".row { display: flex; gap: 20px; margin: 10px 0; }" +
+          ".col { flex: 1; }" +
+          ".label { font-weight: bold; font-size: 12px; }" +
+          ".value { font-size: 13px; }" +
+          "</style></head><body>"
+      );
+      printWindow.document.write(printContent.innerHTML);
+      printWindow.document.write("</body></html>");
+      printWindow.document.close();
+      printWindow.print();
+    }
   };
 
-  const handleDownloadPDF = async () => {
-    const element = document.getElementById("os-print-content");
-    if (!element) {
-      alert("Conteúdo não encontrado para PDF");
+  const handleDownloadPDF = () => {
+    const printContent = document.querySelector("[data-print-content]");
+    if (!printContent) {
+      alert("Conteúdo para PDF não encontrado");
       return;
     }
 
-    try {
-      const { jsPDF } = await import("jspdf");
-      const html2canvas = (await import("html2canvas")).default;
-
-      setTimeout(async () => {
-        const canvas = await html2canvas(element, {
-          backgroundColor: "#ffffff",
-          scale: 2,
-          logging: false,
-        });
-
+    setTimeout(() => {
+      html2canvas(printContent as HTMLElement, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+      }).then((canvas) => {
         const imgData = canvas.toDataURL("image/png");
-        const pdf = new jsPDF({
-          orientation: "portrait",
-          unit: "mm",
-          format: "a4",
-        });
-
+        const pdf = new jsPDF("p", "mm", "a4");
         const imgWidth = 210;
         const imgHeight = (canvas.height * imgWidth) / canvas.width;
         let heightLeft = imgHeight;
@@ -144,334 +79,399 @@ export default function OSDetail() {
           heightLeft -= 297;
         }
 
-        pdf.save(`OS_${ordem.id}.pdf`);
-      }, 100);
-    } catch (error) {
-      console.error("Erro ao gerar PDF:", error);
-      alert("Erro ao gerar PDF");
-    }
+        pdf.save(`OS-${order?.id}.pdf`);
+      });
+    }, 100);
   };
 
-  // Separar serviços e produtos
-  const servicos = orderItems.filter((item) => item.type === "service");
-  const produtos = orderItems.filter((item) => item.type === "product");
+  if (!order) {
+    return <div className="p-8">OS não encontrada</div>;
+  }
 
-  // Calcular totais
-  const totalServicos = servicos.reduce((sum, item) => sum + (Number(item.total) || 0), 0);
-  const totalProdutos = produtos.reduce((sum, item) => sum + (Number(item.total) || 0), 0);
-  const subtotal = totalServicos + totalProdutos + (Number(ordem.laborCost) || 0) + (Number(ordem.shippingCost) || 0) + (Number(ordem.otherCosts) || 0);
-  const total = subtotal - (Number(ordem.discount) || 0);
+  const services = orderItems?.filter((item) => item.type === "service") || [];
+  const products = orderItems?.filter((item) => item.type === "product") || [];
+
+  const servicesTotalValue = services.reduce(
+    (sum, item) => sum + Number(item.total || 0),
+    0
+  );
+  const productsTotalValue = products.reduce(
+    (sum, item) => sum + Number(item.total || 0),
+    0
+  );
+  const subtotal = servicesTotalValue + productsTotalValue;
+  const laborCost = Number(order.laborCost || 0);
+  const shippingCost = Number(order.shippingCost || 0);
+  const otherCost = Number(order.otherCosts || 0);
+  const totalDiscount = Number(order.discount || 0);
+  const total =
+    subtotal + laborCost + shippingCost + otherCost - totalDiscount;
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(value);
+  };
+
+  const formatDate = (date: Date | null | undefined) => {
+    if (!date) return "-";
+    return new Date(date).toLocaleDateString("pt-BR");
+  };
 
   return (
-    <Layout>
-      <div className="container py-8 max-w-4xl">
-        {/* Cabeçalho com botões */}
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold text-foreground">OS #{ordem.id}</h1>
-          <div className="flex gap-2">
-            <button
-              onClick={handlePrint}
-              className="flex items-center gap-2 px-4 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 transition"
-            >
-              <Printer className="w-4 h-4" />
-              Imprimir
-            </button>
-            <button
-              onClick={handleDownloadPDF}
-              className="flex items-center gap-2 px-4 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 transition"
-            >
-              <Download className="w-4 h-4" />
-              Baixar PDF
-            </button>
-            <button
-              onClick={() => navigate(`/os/${osId}/edit`)}
-              className="flex items-center gap-2 px-4 py-2 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 transition"
-            >
-              <Edit className="w-4 h-4" />
-              Editar
-            </button>
+    <div className="p-8 bg-gray-50 min-h-screen">
+      <div className="mb-6 flex gap-3">
+        <Button onClick={handlePrint} variant="default">
+          Imprimir
+        </Button>
+        <Button onClick={handleDownloadPDF} variant="default">
+          Baixar PDF
+        </Button>
+        <Button variant="outline">Editar</Button>
+      </div>
+
+      <div
+        ref={printRef}
+        data-print-content
+        className="bg-white p-12 shadow-lg max-w-4xl mx-auto"
+      >
+        {/* Cabeçalho */}
+        <div className="text-center mb-8 pb-4 border-b-2 border-black">
+          <h1 className="text-2xl font-bold">ORDEM DE SERVIÇO Nº {order.id}</h1>
+          <p className="text-sm mt-2">{formatDate(order.createdAt)}</p>
+        </div>
+
+        {/* PERÍODO DE EXECUÇÃO */}
+        <div className="mb-6">
+          <h2 className="text-sm font-bold border-b-2 border-black pb-2 mb-3">
+            PERÍODO DE EXECUÇÃO
+          </h2>
+          <div className="grid grid-cols-2 gap-8 text-sm">
+            <div>
+              <span className="font-bold">Entrada:</span>
+              <span className="ml-2">{formatDate(order.createdAt)}</span>
+            </div>
+            <div>
+              <span className="font-bold">Saída:</span>
+              <span className="ml-2">__/__/____</span>
+            </div>
           </div>
         </div>
 
-        {/* Conteúdo para impressão/PDF - Fundo branco */}
-        <div id="os-print-content" className="bg-white text-black p-8 space-y-6 rounded-lg">
-          {/* Cabeçalho da OS */}
-          <div className="border-b-2 border-black pb-4">
-            <h1 className="text-2xl font-bold">ORDEM DE SERVIÇO #{ordem.id}</h1>
-            <p className="text-sm text-gray-700 mt-2">Data: {formatDate(ordem.createdAt)}</p>
-          </div>
-
-          {/* Status e Informações Gerais */}
-          <div className="border-b border-black pb-4">
-            <h2 className="text-lg font-bold mb-4">Informações Gerais</h2>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div>
-                <p className="text-xs font-bold text-gray-600">Status</p>
-                <p className="text-sm font-semibold">{ordem.status || "-"}</p>
-              </div>
-              <div>
-                <p className="text-xs font-bold text-gray-600">Prioridade</p>
-                <p className="text-sm font-semibold">{ordem.priority || "-"}</p>
-              </div>
-              <div>
-                <p className="text-xs font-bold text-gray-600">Origem</p>
-                <p className="text-sm font-semibold">{ordem.origin || "-"}</p>
-              </div>
-              <div>
-                <p className="text-xs font-bold text-gray-600">Técnico</p>
-                <p className="text-sm font-semibold">{ordem.technician || "-"}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Cliente */}
-          <div className="border-b border-black pb-4">
-            <h2 className="text-lg font-bold mb-4">Cliente</h2>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-xs font-bold text-gray-600">Nome</p>
-                <p className="text-sm">{ordem.client?.name || "-"}</p>
-              </div>
-              <div>
-                <p className="text-xs font-bold text-gray-600">CNPJ/CPF</p>
-                <p className="text-sm">{ordem.client?.cnpjCpf || "-"}</p>
-              </div>
-              <div>
-                <p className="text-xs font-bold text-gray-600">Telefone</p>
-                <p className="text-sm">{ordem.client?.phone || "-"}</p>
-              </div>
-              <div>
-                <p className="text-xs font-bold text-gray-600">E-mail</p>
-                <p className="text-sm">{ordem.client?.email || "-"}</p>
-              </div>
-              <div className="col-span-2">
-                <p className="text-xs font-bold text-gray-600">Endereço</p>
-                <p className="text-sm">
-                  {ordem.client?.street ? `${ordem.client.street}, ${ordem.client.neighborhood} - ${ordem.client.city}` : "-"}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Informações Adicionais */}
-          <div className="border-b border-black pb-4">
-            <h2 className="text-lg font-bold mb-4">Informações Adicionais</h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              <div>
-                <p className="text-xs font-bold text-gray-600">Teclado Faltando</p>
-                <p className="text-sm">{ordem.missingKeyboard === "yes" ? "Sim" : "Não"}</p>
-              </div>
-              <div>
-                <p className="text-xs font-bold text-gray-600">Tela Trincada</p>
-                <p className="text-sm">{ordem.crackedScreen === "yes" ? "Sim" : "Não"}</p>
-              </div>
-              <div>
-                <p className="text-xs font-bold text-gray-600">Carregador</p>
-                <p className="text-sm">{ordem.missingCharger === "yes" ? "Sim" : "Não"}</p>
-              </div>
-              <div>
-                <p className="text-xs font-bold text-gray-600">Bolsa</p>
-                <p className="text-sm">{ordem.missingBag === "yes" ? "Sim" : "Não"}</p>
-              </div>
-              <div>
-                <p className="text-xs font-bold text-gray-600">Ligando</p>
-                <p className="text-sm">{ordem.poweringOn === "yes" ? "Sim" : "Não"}</p>
-              </div>
-              <div>
-                <p className="text-xs font-bold text-gray-600">Cabo de Energia</p>
-                <p className="text-sm">{ordem.missingPowerCable === "yes" ? "Sim" : "Não"}</p>
-              </div>
-            </div>
-            {ordem.password && (
-              <div className="mt-4">
-                <p className="text-xs font-bold text-gray-600">Senha</p>
-                <p className="text-sm">{ordem.password}</p>
-              </div>
-            )}
-          </div>
-
-          {/* Equipamento */}
-          <div className="border-b border-black pb-4">
-            <h2 className="text-lg font-bold mb-4">Equipamento</h2>
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <div>
-                <p className="text-xs font-bold text-gray-600">Nome</p>
-                <p className="text-sm">{ordem.equipmentName || "-"}</p>
-              </div>
-              <div>
-                <p className="text-xs font-bold text-gray-600">Série</p>
-                <p className="text-sm">{ordem.equipmentSerial || "-"}</p>
-              </div>
-              <div>
-                <p className="text-xs font-bold text-gray-600">Etiqueta</p>
-                <p className="text-sm">{ordem.equipmentTag || "-"}</p>
-              </div>
-              <div>
-                <p className="text-xs font-bold text-gray-600">Marca/Modelo</p>
-                <p className="text-sm">{ordem.equipmentBrand && ordem.equipmentModel ? `${ordem.equipmentBrand} ${ordem.equipmentModel}` : "-"}</p>
-              </div>
-            </div>
-            {ordem.reportedDefects && (
-              <div className="mb-4">
-                <p className="text-xs font-bold text-gray-600">Defeitos Relatados</p>
-                <p className="text-sm whitespace-pre-wrap">{ordem.reportedDefects}</p>
-              </div>
-            )}
-            {ordem.proposedSolution && (
-              <div className="mb-4">
-                <p className="text-xs font-bold text-gray-600">Solução Proposta</p>
-                <p className="text-sm whitespace-pre-wrap">{ordem.proposedSolution}</p>
-              </div>
-            )}
-            {ordem.technicalReport && (
-              <div>
-                <p className="text-xs font-bold text-gray-600">Laudo Técnico</p>
-                <p className="text-sm whitespace-pre-wrap">{ordem.technicalReport}</p>
-              </div>
-            )}
-          </div>
-
-          {/* Serviços */}
-          {servicos.length > 0 && (
-            <div className="border-b border-black pb-4">
-              <h2 className="text-lg font-bold mb-4">Serviços</h2>
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr>
-                    <th className="border border-black px-3 py-2 text-left text-xs font-bold">Serviço</th>
-                    <th className="border border-black px-3 py-2 text-left text-xs font-bold">Detalhes</th>
-                    <th className="border border-black px-3 py-2 text-center text-xs font-bold">Qtd</th>
-                    <th className="border border-black px-3 py-2 text-right text-xs font-bold">Valor</th>
-                    <th className="border border-black px-3 py-2 text-right text-xs font-bold">Desc %</th>
-                    <th className="border border-black px-3 py-2 text-right text-xs font-bold">Subtotal</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {servicos.map((item) => (
-                    <tr key={item.id}>
-                      <td className="border border-black px-3 py-2 text-sm">{item.description}</td>
-                      <td className="border border-black px-3 py-2 text-sm">{item.details || "-"}</td>
-                      <td className="border border-black px-3 py-2 text-center text-sm">{item.quantity || 1}</td>
-                      <td className="border border-black px-3 py-2 text-right text-sm">{formatCurrency(item.unitPrice)}</td>
-                      <td className="border border-black px-3 py-2 text-right text-sm">{item.discount || "0"}%</td>
-                      <td className="border border-black px-3 py-2 text-right text-sm font-semibold">{formatCurrency(item.total)}</td>
-                    </tr>
-                  ))}
-                  <tr className="bg-gray-100">
-                    <td colSpan={5} className="border border-black px-3 py-2 text-right font-bold text-sm">
-                      Total Serviços:
-                    </td>
-                    <td className="border border-black px-3 py-2 text-right font-bold text-sm">{formatCurrency(totalServicos)}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {/* Produtos */}
-          {produtos.length > 0 && (
-            <div className="border-b border-black pb-4">
-              <h2 className="text-lg font-bold mb-4">Produtos</h2>
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr>
-                    <th className="border border-black px-3 py-2 text-left text-xs font-bold">Produto</th>
-                    <th className="border border-black px-3 py-2 text-left text-xs font-bold">Detalhes</th>
-                    <th className="border border-black px-3 py-2 text-center text-xs font-bold">Qtd</th>
-                    <th className="border border-black px-3 py-2 text-right text-xs font-bold">Valor</th>
-                    <th className="border border-black px-3 py-2 text-right text-xs font-bold">Desc %</th>
-                    <th className="border border-black px-3 py-2 text-right text-xs font-bold">Subtotal</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {produtos.map((item) => (
-                    <tr key={item.id}>
-                      <td className="border border-black px-3 py-2 text-sm">{item.description}</td>
-                      <td className="border border-black px-3 py-2 text-sm">{item.details || "-"}</td>
-                      <td className="border border-black px-3 py-2 text-center text-sm">{item.quantity || 1}</td>
-                      <td className="border border-black px-3 py-2 text-right text-sm">{formatCurrency(item.unitPrice)}</td>
-                      <td className="border border-black px-3 py-2 text-right text-sm">{item.discount || "0"}%</td>
-                      <td className="border border-black px-3 py-2 text-right text-sm font-semibold">{formatCurrency(item.total)}</td>
-                    </tr>
-                  ))}
-                  <tr className="bg-gray-100">
-                    <td colSpan={5} className="border border-black px-3 py-2 text-right font-bold text-sm">
-                      Total Produtos:
-                    </td>
-                    <td className="border border-black px-3 py-2 text-right font-bold text-sm">{formatCurrency(totalProdutos)}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {/* Resumo Financeiro */}
-          <div className="border-b-2 border-black pb-4">
-            <h2 className="text-lg font-bold mb-4">Resumo Financeiro</h2>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Serviços:</span>
-                <span className="font-semibold">{formatCurrency(totalServicos)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span>Produtos:</span>
-                <span className="font-semibold">{formatCurrency(totalProdutos)}</span>
-              </div>
-              {Number(ordem.laborCost) > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span>Mão de Obra:</span>
-                  <span className="font-semibold">{formatCurrency(ordem.laborCost)}</span>
-                </div>
-              )}
-              {Number(ordem.shippingCost) > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span>Frete:</span>
-                  <span className="font-semibold">{formatCurrency(ordem.shippingCost)}</span>
-                </div>
-              )}
-              {Number(ordem.otherCosts) > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span>Outros:</span>
-                  <span className="font-semibold">{formatCurrency(ordem.otherCosts)}</span>
-                </div>
-              )}
-              <div className="flex justify-between text-sm border-t border-black pt-2">
-                <span>Subtotal:</span>
-                <span className="font-semibold">{formatCurrency(subtotal)}</span>
-              </div>
-              {Number(ordem.discount) > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span>Desconto:</span>
-                  <span className="font-semibold">-{formatCurrency(ordem.discount)}</span>
-                </div>
-              )}
-              <div className="flex justify-between text-lg border-t-2 border-black pt-2 mt-2">
-                <span className="font-bold">TOTAL:</span>
-                <span className="font-bold">{formatCurrency(total)}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Observações */}
-          {(ordem.publicNotes || ordem.internalNotes) && (
+        {/* INFORMAÇÕES GERAIS */}
+        <div className="mb-6">
+          <h2 className="text-sm font-bold border-b-2 border-black pb-2 mb-3">
+            INFORMAÇÕES GERAIS
+          </h2>
+          <div className="grid grid-cols-3 gap-4 text-sm">
             <div>
-              <h2 className="text-lg font-bold mb-4">Observações</h2>
-              {ordem.publicNotes && (
-                <div className="mb-4">
-                  <p className="text-xs font-bold text-gray-600">Observações Públicas</p>
-                  <p className="text-sm whitespace-pre-wrap">{ordem.publicNotes}</p>
+              <span className="font-bold block">Status</span>
+              <span>{order.status || "-"}</span>
+            </div>
+            <div>
+              <span className="font-bold block">Prioridade</span>
+              <span>{order.priority || "-"}</span>
+            </div>
+            <div>
+              <span className="font-bold block">Origem</span>
+              <span>{order.origin || "-"}</span>
+            </div>
+            <div>
+              <span className="font-bold block">Técnico</span>
+              <span>{order.technician || "-"}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* DADOS DO CLIENTE */}
+        <div className="mb-6">
+          <h2 className="text-sm font-bold border-b-2 border-black pb-2 mb-3">
+            DADOS DO CLIENTE
+          </h2>
+          <div className="grid grid-cols-2 gap-8 text-sm">
+            <div>
+              <div className="mb-2">
+                <span className="font-bold block">Razão Social:</span>
+                <span>{order.client?.name || "-"}</span>
+              </div>
+              <div className="mb-2">
+                <span className="font-bold block">CNPJ/CPF:</span>
+                <span>{order.client?.cnpjCpf || "-"}</span>
+              </div>
+              <div>
+                <span className="font-bold block">Telefone:</span>
+                <span>{order.client?.phone || "-"}</span>
+              </div>
+            </div>
+            <div>
+              <div className="mb-2">
+                <span className="font-bold block">Nome Fantasia:</span>
+                <span>{order.client?.name || "-"}</span>
+              </div>
+              <div className="mb-2">
+                <span className="font-bold block">Cidade/UF:</span>
+                <span>{order.client?.neighborhood || "-"}</span>
+              </div>
+              <div>
+                <span className="font-bold block">E-mail:</span>
+                <span>{order.client?.email || "-"}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* EQUIPAMENTO */}
+        <div className="mb-6">
+          <h2 className="text-sm font-bold border-b-2 border-black pb-2 mb-3">
+            EQUIPAMENTO
+          </h2>
+          <div className="grid grid-cols-2 gap-8 text-sm mb-4">
+            <div>
+              <div className="mb-2">
+                <span className="font-bold block">Nome do Equipamento:</span>
+                <span>{order.equipmentName || "-"}</span>
+              </div>
+              <div>
+                <span className="font-bold block">Defeitos Relatados:</span>
+                <span>{order.reportedDefects || "-"}</span>
+              </div>
+            </div>
+            <div>
+              <div className="mb-2">
+                <span className="font-bold block">Marca/Modelo:</span>
+                <span>{order.equipmentBrand} {order.equipmentModel || "-"}</span>
+              </div>
+              <div>
+                <span className="font-bold block">Série:</span>
+                <span>{order.equipmentSerial || "-"}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* INFORMAÇÕES ADICIONAIS */}
+          <div className="bg-gray-100 p-4 rounded mb-4 text-sm">
+            <h3 className="font-bold mb-2">Informações Adicionais:</h3>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <span className="font-bold block">Teclado Faltando:</span>
+                <span>{order.missingKeyboard ? "Sim" : "Não"}</span>
+              </div>
+              <div>
+                <span className="font-bold block">Tela Trincada:</span>
+                <span>{order.crackedScreen ? "Sim" : "Não"}</span>
+              </div>
+              <div>
+                <span className="font-bold block">Carregador:</span>
+                <span>{order.missingCharger ? "Sim" : "Não"}</span>
+              </div>
+              <div>
+                <span className="font-bold block">Bolsa:</span>
+                <span>{order.missingBag ? "Sim" : "Não"}</span>
+              </div>
+              <div>
+                <span className="font-bold block">Ligando:</span>
+                <span>{order.poweringOn ? "Sim" : "Não"}</span>
+              </div>
+              <div>
+                <span className="font-bold block">Cabo de Energia:</span>
+                <span>{order.missingPowerCable ? "Sim" : "Não"}</span>
+              </div>
+              {order.password && (
+                <div>
+                  <span className="font-bold block">Senha:</span>
+                  <span>{order.password}</span>
                 </div>
               )}
-              {ordem.internalNotes && (
+            </div>
+          </div>
+
+          {/* LAUDO E SOLUÇÃO */}
+          {(order.technicalReport || order.proposedSolution) && (
+            <div className="grid grid-cols-2 gap-8 text-sm">
+              {order.technicalReport && (
                 <div>
-                  <p className="text-xs font-bold text-gray-600">Observações Internas</p>
-                  <p className="text-sm whitespace-pre-wrap">{ordem.internalNotes}</p>
+                  <span className="font-bold block">Laudo Técnico:</span>
+                  <span>{order.technicalReport}</span>
+                </div>
+              )}
+              {order.proposedSolution && (
+                <div>
+                  <span className="font-bold block">Solução Proposta:</span>
+                  <span>{order.proposedSolution}</span>
                 </div>
               )}
             </div>
           )}
+        </div>
+
+        {/* SERVIÇOS */}
+        {services.length > 0 && (
+          <div className="mb-6">
+            <h2 className="text-sm font-bold border-b-2 border-black pb-2 mb-3">
+              SERVIÇOS
+            </h2>
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr className="border-b-2 border-black">
+                  <th className="text-left py-2 px-2">ITEM</th>
+                  <th className="text-left py-2 px-2">NOME</th>
+                  <th className="text-left py-2 px-2">DETALHES</th>
+                  <th className="text-right py-2 px-2">QTD</th>
+                  <th className="text-right py-2 px-2">VL. UNIT.</th>
+                  <th className="text-right py-2 px-2">SUBTOTAL</th>
+                </tr>
+              </thead>
+              <tbody>
+                {services.map((item, idx) => (
+                  <tr key={item.id} className="border-b border-gray-300">
+                    <td className="py-2 px-2">{idx + 1}</td>
+                    <td className="py-2 px-2">{item.description}</td>
+                    <td className="py-2 px-2">{item.details || "-"}</td>
+                    <td className="text-right py-2 px-2">{item.quantity}</td>
+                    <td className="text-right py-2 px-2">
+                      {formatCurrency(Number(item.unitPrice || 0))}
+                    </td>
+                    <td className="text-right py-2 px-2 font-bold">
+                      {formatCurrency(Number(item.total || 0))}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="text-right mt-2 text-sm font-bold">
+              Total Serviços: {formatCurrency(servicesTotalValue)}
+            </div>
+          </div>
+        )}
+
+        {/* PRODUTOS */}
+        {products.length > 0 && (
+          <div className="mb-6">
+            <h2 className="text-sm font-bold border-b-2 border-black pb-2 mb-3">
+              PRODUTOS
+            </h2>
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr className="border-b-2 border-black">
+                  <th className="text-left py-2 px-2">ITEM</th>
+                  <th className="text-left py-2 px-2">NOME</th>
+                  <th className="text-left py-2 px-2">DETALHES</th>
+                  <th className="text-right py-2 px-2">QTD</th>
+                  <th className="text-right py-2 px-2">VL. UNIT.</th>
+                  <th className="text-right py-2 px-2">SUBTOTAL</th>
+                </tr>
+              </thead>
+              <tbody>
+                {products.map((item, idx) => (
+                  <tr key={item.id} className="border-b border-gray-300">
+                    <td className="py-2 px-2">{idx + 1}</td>
+                    <td className="py-2 px-2">{item.description}</td>
+                    <td className="py-2 px-2">{item.details || "-"}</td>
+                    <td className="text-right py-2 px-2">{item.quantity}</td>
+                    <td className="text-right py-2 px-2">
+                      {formatCurrency(Number(item.unitPrice || 0))}
+                    </td>
+                    <td className="text-right py-2 px-2 font-bold">
+                      {formatCurrency(Number(item.total || 0))}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="text-right mt-2 text-sm font-bold">
+              Total Produtos: {formatCurrency(productsTotalValue)}
+            </div>
+          </div>
+        )}
+
+        {/* RESUMO FINANCEIRO */}
+        <div className="mb-6">
+          <h2 className="text-sm font-bold border-b-2 border-black pb-2 mb-3">
+            RESUMO FINANCEIRO
+          </h2>
+          <div className="grid grid-cols-2 gap-8 text-sm">
+            <div>
+              <div className="mb-2">
+                <span className="font-bold">Serviços:</span>
+                <span className="float-right">
+                  {formatCurrency(servicesTotalValue)}
+                </span>
+              </div>
+              <div className="mb-2">
+                <span className="font-bold">Produtos:</span>
+                <span className="float-right">
+                  {formatCurrency(productsTotalValue)}
+                </span>
+              </div>
+              <div className="mb-2">
+                <span className="font-bold">Mão de Obra:</span>
+                <span className="float-right">
+                  {formatCurrency(laborCost)}
+                </span>
+              </div>
+            </div>
+            <div>
+              <div className="mb-2">
+                <span className="font-bold">Frete:</span>
+                <span className="float-right">
+                  {formatCurrency(shippingCost)}
+                </span>
+              </div>
+              <div className="mb-2">
+                <span className="font-bold">Outros:</span>
+                <span className="float-right">
+                  {formatCurrency(otherCost)}
+                </span>
+              </div>
+              <div className="mb-2">
+                <span className="font-bold">Desconto:</span>
+                <span className="float-right">
+                  {formatCurrency(totalDiscount)}
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className="border-t-2 border-black mt-4 pt-4 text-right text-lg font-bold">
+            TOTAL: {formatCurrency(total)}
+          </div>
+        </div>
+
+        {/* OBSERVAÇÕES */}
+        {(order.publicNotes || order.internalNotes) && (
+          <div className="mb-6">
+            <h2 className="text-sm font-bold border-b-2 border-black pb-2 mb-3">
+              OBSERVAÇÕES
+            </h2>
+            {order.publicNotes && (
+              <div className="text-sm mb-2">
+                <span className="font-bold">Públicas:</span>
+                <p>{order.publicNotes}</p>
+              </div>
+            )}
+            {order.internalNotes && (
+              <div className="text-sm">
+                <span className="font-bold">Internas:</span>
+                <p>{order.internalNotes}</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ASSINATURAS */}
+        <div className="mt-12 pt-8 border-t-2 border-black">
+          <div className="grid grid-cols-2 gap-12 text-sm">
+            <div className="text-center">
+              <div className="border-t border-black h-12 mb-2"></div>
+              <span>Assinatura do Cliente</span>
+            </div>
+            <div className="text-center">
+              <div className="border-t border-black h-12 mb-2"></div>
+              <span>Assinatura do Técnico</span>
+            </div>
+          </div>
         </div>
       </div>
-    </Layout>
+    </div>
   );
 }
