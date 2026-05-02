@@ -53,68 +53,309 @@ export default function OSDetail() {
     { enabled: !!orderId }
   );
 
+  const buildPrintHTML = () => {
+    const s = services || [];
+    const p = products || [];
+    const sTotal = s.reduce((sum, i) => sum + Number(i.total || 0), 0);
+    const pTotal = p.reduce((sum, i) => sum + Number(i.total || 0), 0);
+    const lCost = Number(order?.laborCost || 0);
+    const sCost = Number(order?.shippingCost || 0);
+    const oCost = Number(order?.otherCosts || 0);
+    const disc = Number(order?.discount || 0);
+    const grandTotal = sTotal + pTotal + lCost + sCost + oCost - disc;
+    const fmtR = (v: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
+    const fmtD = (d: Date | null | undefined) => d ? new Date(d).toLocaleDateString("pt-BR") : "-";
+    const yn = (v: string | null | undefined) => v === "yes" ? "Sim" : v === "no" ? "Não" : "-";
+    const statusLbl = STATUS_LABELS[order?.status || ""] || order?.status || "-";
+    const addr = [order?.client?.street, order?.client?.number, order?.client?.neighborhood, order?.client?.city].filter(Boolean).join(", ") || "-";
+
+    const serviceRows = s.map((item, idx) => `
+      <tr>
+        <td style="text-align:center">${idx + 1}</td>
+        <td>${item.description || ""}</td>
+        <td>${item.details || "-"}</td>
+        <td style="text-align:center">${item.quantity}</td>
+        <td style="text-align:right">${fmtR(Number(item.unitPrice || 0))}</td>
+        <td style="text-align:right;font-weight:bold">${fmtR(Number(item.total || 0))}</td>
+      </tr>`).join("");
+
+    const productRows = p.map((item, idx) => `
+      <tr>
+        <td style="text-align:center">${idx + 1}</td>
+        <td>${item.description || ""}</td>
+        <td>${item.details || "-"}</td>
+        <td style="text-align:center">${item.quantity}</td>
+        <td style="text-align:right">${fmtR(Number(item.unitPrice || 0))}</td>
+        <td style="text-align:right;font-weight:bold">${fmtR(Number(item.total || 0))}</td>
+      </tr>`).join("");
+
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>OS ${order?.id} - ProTech TI</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; font-size: 11px; color: #111; background: #fff; }
+    .page { padding: 20px 24px; max-width: 800px; margin: 0 auto; }
+
+    /* CABEÇALHO DA EMPRESA */
+    .company-header { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 12px; border-bottom: 3px solid #1a1a2e; margin-bottom: 14px; }
+    .company-logo-area { display: flex; align-items: center; gap: 12px; }
+    .company-logo-box { width: 52px; height: 52px; background: #1a1a2e; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+    .company-logo-box svg { width: 32px; height: 32px; fill: #00D9FF; }
+    .company-name { font-size: 20px; font-weight: bold; color: #1a1a2e; }
+    .company-subtitle { font-size: 10px; color: #666; margin-top: 2px; }
+    .company-contact { text-align: right; font-size: 10px; color: #444; line-height: 1.6; }
+
+    /* TÍTULO DA OS */
+    .os-title-bar { background: #1a1a2e; color: #fff; text-align: center; padding: 10px; margin-bottom: 14px; }
+    .os-title-bar h1 { font-size: 16px; font-weight: bold; letter-spacing: 1px; }
+    .os-title-bar .os-date { font-size: 11px; color: #00D9FF; margin-top: 2px; }
+
+    /* SEÇÕES */
+    .section { margin-bottom: 12px; }
+    .section-header { background: #1a1a2e; color: #fff; font-size: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; padding: 5px 8px; }
+    table.data { width: 100%; border-collapse: collapse; }
+    table.data td { border: 1px solid #ccc; padding: 5px 8px; vertical-align: top; }
+    table.data td.lbl { background: #f5f5f5; font-weight: bold; font-size: 10px; color: #333; width: 18%; white-space: nowrap; }
+    table.data td.val { font-size: 11px; }
+
+    /* TABELAS DE ITENS */
+    table.items { width: 100%; border-collapse: collapse; }
+    table.items th { background: #f0f0f0; border: 1px solid #bbb; padding: 5px 7px; font-size: 10px; font-weight: bold; text-align: left; }
+    table.items td { border: 1px solid #ccc; padding: 5px 7px; font-size: 11px; }
+    table.items tr:nth-child(even) td { background: #fafafa; }
+    table.items tr.total-row td { background: #1a1a2e; color: #fff; font-weight: bold; }
+
+    /* RESUMO FINANCEIRO */
+    .financial-table { width: 260px; margin-left: auto; border-collapse: collapse; }
+    .financial-table td { border: 1px solid #ccc; padding: 5px 10px; font-size: 11px; }
+    .financial-table td.lbl { background: #f5f5f5; font-weight: bold; }
+    .financial-table tr.grand-total td { background: #1a1a2e; color: #fff; font-weight: bold; font-size: 13px; }
+
+    /* ASSINATURAS */
+    .signatures { display: flex; gap: 60px; margin-top: 30px; padding-top: 10px; }
+    .sig-box { flex: 1; text-align: center; }
+    .sig-line { border-top: 1px solid #333; margin-bottom: 6px; padding-top: 4px; font-size: 10px; color: #444; }
+    .sig-name { font-size: 10px; color: #666; }
+
+    /* RODAPÉ */
+    .footer { margin-top: 16px; padding-top: 10px; border-top: 1px solid #ddd; font-size: 9px; color: #888; text-align: center; }
+
+    @media print {
+      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .page { padding: 10px 16px; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- CABEÇALHO DA EMPRESA -->
+  <div class="company-header">
+    <div class="company-logo-area">
+      <div class="company-logo-box">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8" style="fill:none;stroke:#00D9FF;stroke-width:2"/><line x1="16" y1="13" x2="8" y2="13" style="fill:none;stroke:#00D9FF;stroke-width:2"/><line x1="16" y1="17" x2="8" y2="17" style="fill:none;stroke:#00D9FF;stroke-width:2"/><polyline points="10 9 9 9 8 9" style="fill:none;stroke:#00D9FF;stroke-width:2"/></svg>
+      </div>
+      <div>
+        <div class="company-name">ProTech TI</div>
+        <div class="company-subtitle">Soluções em Tecnologia da Informação</div>
+        <div class="company-subtitle">sistema.protechti.com.br</div>
+      </div>
+    </div>
+    <div class="company-contact">
+      Responsável: ${order?.technician || "-"}<br>
+      Status: <strong>${statusLbl}</strong>
+    </div>
+  </div>
+
+  <!-- TÍTULO DA OS -->
+  <div class="os-title-bar">
+    <h1>ORDEM DE SERVIÇO Nº ${order?.id}</h1>
+    <div class="os-date">Data de abertura: ${fmtD(order?.createdAt)}</div>
+  </div>
+
+  <!-- PERÍODO DE EXECUÇÃO -->
+  <div class="section">
+    <div class="section-header">Período de Execução</div>
+    <table class="data">
+      <tr>
+        <td class="lbl">Entrada</td><td class="val">${fmtD(order?.entryDate || order?.createdAt)}</td>
+        <td class="lbl">Saída Prevista</td><td class="val">${fmtD(order?.exitDate)}</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- DADOS DO CLIENTE -->
+  <div class="section">
+    <div class="section-header">Dados do Cliente</div>
+    <table class="data">
+      <tr>
+        <td class="lbl">Razão Social</td><td class="val">${order?.client?.name || "-"}</td>
+        <td class="lbl">CNPJ/CPF</td><td class="val">${order?.client?.cnpjCpf || "-"}</td>
+      </tr>
+      <tr>
+        <td class="lbl">Telefone</td><td class="val">${order?.client?.phone || "-"}</td>
+        <td class="lbl">E-mail</td><td class="val">${order?.client?.email || "-"}</td>
+      </tr>
+      <tr>
+        <td class="lbl">Endereço</td><td class="val" colspan="3">${addr}</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- INFORMAÇÕES ADICIONAIS -->
+  <div class="section">
+    <div class="section-header">Informações Adicionais</div>
+    <table class="data">
+      <tr>
+        <td class="lbl">Teclado Faltando</td><td class="val">${yn(order?.missingKeyboard)}</td>
+        <td class="lbl">Tela Trincada</td><td class="val">${yn(order?.crackedScreen)}</td>
+        <td class="lbl">Carregador</td><td class="val">${yn(order?.missingCharger)}</td>
+      </tr>
+      <tr>
+        <td class="lbl">Bolsa</td><td class="val">${yn(order?.missingBag)}</td>
+        <td class="lbl">Ligando</td><td class="val">${yn(order?.poweringOn)}</td>
+        <td class="lbl">Cabo de Energia</td><td class="val">${yn(order?.missingPowerCable)}</td>
+      </tr>
+      ${order?.password ? `<tr><td class="lbl">Senha</td><td class="val" colspan="5">${order.password}</td></tr>` : ""}
+    </table>
+  </div>
+
+  <!-- EQUIPAMENTO -->
+  <div class="section">
+    <div class="section-header">Equipamento</div>
+    <table class="data">
+      <tr>
+        <td class="lbl">Nome</td><td class="val">${order?.equipmentName || "-"}</td>
+        <td class="lbl">Marca</td><td class="val">${order?.equipmentBrand || "-"}</td>
+      </tr>
+      <tr>
+        <td class="lbl">Modelo</td><td class="val">${order?.equipmentModel || "-"}</td>
+        <td class="lbl">Série / Etiqueta</td><td class="val">${order?.equipmentSerial || "-"} / ${order?.equipmentTag || "-"}</td>
+      </tr>
+      ${order?.reportedDefects ? `<tr><td class="lbl">Defeitos</td><td class="val" colspan="3">${order.reportedDefects}</td></tr>` : ""}
+      ${order?.technicalReport ? `<tr><td class="lbl">Laudo Técnico</td><td class="val" colspan="3">${order.technicalReport}</td></tr>` : ""}
+      ${order?.proposedSolution ? `<tr><td class="lbl">Solução Proposta</td><td class="val" colspan="3">${order.proposedSolution}</td></tr>` : ""}
+    </table>
+  </div>
+
+  <!-- SERVIÇOS -->
+  ${s.length > 0 ? `
+  <div class="section">
+    <div class="section-header">Serviços</div>
+    <table class="items">
+      <thead><tr><th style="width:30px">#</th><th>Serviço</th><th>Detalhes</th><th style="width:40px;text-align:center">Qtd</th><th style="width:90px;text-align:right">Vl. Unit.</th><th style="width:90px;text-align:right">Subtotal</th></tr></thead>
+      <tbody>${serviceRows}
+        <tr class="total-row"><td colspan="5" style="text-align:right">Total Serviços:</td><td style="text-align:right">${fmtR(sTotal)}</td></tr>
+      </tbody>
+    </table>
+  </div>` : ""}
+
+  <!-- PRODUTOS -->
+  ${p.length > 0 ? `
+  <div class="section">
+    <div class="section-header">Produtos</div>
+    <table class="items">
+      <thead><tr><th style="width:30px">#</th><th>Produto</th><th>Detalhes</th><th style="width:40px;text-align:center">Qtd</th><th style="width:90px;text-align:right">Vl. Unit.</th><th style="width:90px;text-align:right">Subtotal</th></tr></thead>
+      <tbody>${productRows}
+        <tr class="total-row"><td colspan="5" style="text-align:right">Total Produtos:</td><td style="text-align:right">${fmtR(pTotal)}</td></tr>
+      </tbody>
+    </table>
+  </div>` : ""}
+
+  <!-- RESUMO FINANCEIRO -->
+  <div class="section">
+    <div class="section-header">Resumo Financeiro</div>
+    <div style="display:flex;justify-content:flex-end;margin-top:8px">
+      <table class="financial-table">
+        <tr><td class="lbl">Serviços</td><td style="text-align:right">${fmtR(sTotal)}</td></tr>
+        <tr><td class="lbl">Produtos</td><td style="text-align:right">${fmtR(pTotal)}</td></tr>
+        ${lCost > 0 ? `<tr><td class="lbl">Mão de Obra</td><td style="text-align:right">${fmtR(lCost)}</td></tr>` : ""}
+        ${sCost > 0 ? `<tr><td class="lbl">Frete</td><td style="text-align:right">${fmtR(sCost)}</td></tr>` : ""}
+        ${oCost > 0 ? `<tr><td class="lbl">Outros</td><td style="text-align:right">${fmtR(oCost)}</td></tr>` : ""}
+        ${disc > 0 ? `<tr><td class="lbl" style="color:#c00">Desconto</td><td style="text-align:right;color:#c00">- ${fmtR(disc)}</td></tr>` : ""}
+        <tr class="grand-total"><td>TOTAL</td><td style="text-align:right">${fmtR(grandTotal)}</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- OBSERVAÇÕES -->
+  ${order?.publicNotes ? `
+  <div class="section">
+    <div class="section-header">Observações</div>
+    <table class="data"><tr><td class="lbl">Observações</td><td class="val">${order.publicNotes}</td></tr></table>
+  </div>` : ""}
+
+  <!-- ASSINATURAS -->
+  <div class="signatures">
+    <div class="sig-box">
+      <div style="height:40px"></div>
+      <div class="sig-line">Assinatura do Cliente</div>
+      <div class="sig-name">${order?.client?.name || ""}</div>
+    </div>
+    <div class="sig-box">
+      <div style="height:40px"></div>
+      <div class="sig-line">Assinatura do Técnico</div>
+      <div class="sig-name">${order?.technician || ""}</div>
+    </div>
+  </div>
+
+  <!-- RODAPÉ -->
+  <div class="footer">
+    Caso o cliente não aprove o orçamento e não retire o equipamento em até 30 (trinta) dias, a empresa poderá considerá-lo abandonado, podendo destiná-lo ao descarte, reciclagem ou doação, conforme o art. 1.263 do Código Civil Brasileiro.
+  </div>
+
+</div>
+</body>
+</html>`;
+  };
+
   const handlePrint = () => {
-    const printContent = document.querySelector("[data-print-content]");
-    if (!printContent) return;
-    const printWindow = window.open("", "", "height=800,width=900");
+    const html = buildPrintHTML();
+    const printWindow = window.open("", "", "height=900,width=900");
     if (printWindow) {
-      printWindow.document.write(
-        `<html><head><title>OS ${order?.id}</title><style>
-          * { box-sizing: border-box; margin: 0; padding: 0; }
-          body { font-family: Arial, sans-serif; font-size: 12px; color: #000; background: #fff; }
-          .doc { padding: 24px; }
-          table { width: 100%; border-collapse: collapse; }
-          td, th { border: 1px solid #ccc; padding: 6px 8px; }
-          th { background: #f0f0f0; font-weight: bold; }
-          .section-title { font-weight: bold; font-size: 13px; background: #e8e8e8; padding: 6px 8px; margin: 12px 0 6px; border-left: 4px solid #333; }
-          .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 6px 0; }
-          .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin: 6px 0; }
-          .field label { font-weight: bold; font-size: 11px; color: #555; display: block; }
-          .field span { font-size: 12px; }
-          .total-row { font-weight: bold; background: #f0f0f0; }
-          .grand-total { font-size: 15px; font-weight: bold; text-align: right; padding: 8px; border-top: 2px solid #000; margin-top: 8px; }
-          .signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 40px; }
-          .sig-line { border-top: 1px solid #000; padding-top: 6px; text-align: center; font-size: 11px; }
-          .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; border-bottom: 2px solid #000; padding-bottom: 12px; }
-          .os-number { font-size: 18px; font-weight: bold; }
-          .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
-        </style></head><body><div class="doc">`
-      );
-      printWindow.document.write(printContent.innerHTML);
-      printWindow.document.write("</div></body></html>");
+      printWindow.document.write(html);
       printWindow.document.close();
-      printWindow.print();
+      setTimeout(() => printWindow.print(), 500);
     }
   };
 
   const handleDownloadPDF = () => {
-    const printContent = document.querySelector("[data-print-content]");
-    if (!printContent) return;
+    const html = buildPrintHTML();
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    document.body.appendChild(iframe);
+    iframe.contentDocument?.write(html);
+    iframe.contentDocument?.close();
     setTimeout(() => {
-      html2canvas(printContent as HTMLElement, {
+      html2canvas(iframe.contentDocument?.body || document.body, {
         scale: 2,
         useCORS: true,
         logging: false,
-        backgroundColor: "#ffffff",
+        backgroundColor: '#ffffff',
       }).then((canvas) => {
-        const imgData = canvas.toDataURL("image/png");
-        const pdf = new jsPDF("p", "mm", "a4");
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF('p', 'mm', 'a4');
         const imgWidth = 210;
         const pageHeight = 297;
         const imgHeight = (canvas.height * imgWidth) / canvas.width;
         let heightLeft = imgHeight;
         let position = 0;
-        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
         heightLeft -= pageHeight;
         while (heightLeft > 0) {
           position = heightLeft - imgHeight;
           pdf.addPage();
-          pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+          pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
           heightLeft -= pageHeight;
         }
         pdf.save(`OS-${order?.id}.pdf`);
+        document.body.removeChild(iframe);
       });
-    }, 100);
+    }, 500);
   };
 
   if (!order) {
