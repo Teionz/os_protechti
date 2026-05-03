@@ -123,6 +123,8 @@ export default function OSForm() {
   const [checkingTag, setCheckingTag] = useState(false);
   // Rastreia se o equipamento foi selecionado de um já cadastrado (não deve validar etiqueta)
   const [selectedEquipmentId, setSelectedEquipmentId] = useState<number | null>(null);
+  // Tipo de desconto: 'percent' = % sobre subtotal, 'fixed' = valor fixo em R$
+  const [discountType, setDiscountType] = useState<'percent' | 'fixed'>('fixed');
 
   // Buscar equipamentos do cliente
   const { data: clientEquipments = [] } = trpc.equipments.searchByClientId.useQuery(
@@ -165,6 +167,9 @@ export default function OSForm() {
   useEffect(() => {
     if (isEditing && existingOrder) {
       const o = existingOrder as any;
+      // Ao editar, marcar o equipamento como já existente para evitar validação de etiqueta duplicada
+      // Usamos -1 como sentinela para indicar "equipamento já existe, não validar"
+      setSelectedEquipmentId(-1);
       setFormData({
         clientId: o.clientId?.toString() || "",
         orderNumber: o.orderNumber,
@@ -300,8 +305,9 @@ export default function OSForm() {
   const laborCostNum = parseFloat(formData.laborCost) || 0;
   const shippingCostNum = parseFloat(formData.shippingCost) || 0;
   const otherCostsNum = parseFloat(formData.otherCosts) || 0;
-  const discountNum = parseFloat(formData.discount) || 0;
+  const discountValue = parseFloat(formData.discount) || 0;
   const subtotalGeral = totalServices + totalProducts + laborCostNum + shippingCostNum + otherCostsNum;
+  const discountNum = discountType === 'percent' ? (subtotalGeral * discountValue / 100) : discountValue;
   const totalGeral = subtotalGeral - discountNum;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -1084,16 +1090,27 @@ export default function OSForm() {
                     />
                   </div>
                   <div>
-                    <Label className="text-foreground text-sm">Desconto (R$)</Label>
-                    <Input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      placeholder="0,00"
-                      value={formData.discount}
-                      onChange={(e) => handleChange("discount", e.target.value)}
-                      className="mt-1 bg-background border-border"
-                    />
+                    <Label className="text-foreground text-sm">Desconto</Label>
+                    <div className="flex gap-2 mt-1">
+                      <Select value={discountType} onValueChange={(v) => setDiscountType(v as 'percent' | 'fixed')}>
+                        <SelectTrigger className="w-24 bg-background border-border">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="fixed">R$</SelectItem>
+                          <SelectItem value="percent">%</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="0,00"
+                        value={formData.discount}
+                        onChange={(e) => handleChange("discount", e.target.value)}
+                        className="bg-background border-border"
+                      />
+                    </div>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-accent/20">

@@ -313,6 +313,201 @@ export default function OSDetail() {
 </html>`;
   };
 
+  const buildCupomHTML = () => {
+    const s = services || [];
+    const p = products || [];
+    const sTotal = s.reduce((sum, i) => sum + Number(i.total || 0), 0);
+    const pTotal = p.reduce((sum, i) => sum + Number(i.total || 0), 0);
+    const lCost = Number(order?.laborCost || 0);
+    const sCost = Number(order?.shippingCost || 0);
+    const oCost = Number(order?.otherCosts || 0);
+    const disc = Number(order?.discount || 0);
+    const grandTotal = sTotal + pTotal + lCost + sCost + oCost - disc;
+    const fmtR = (v: number) => v.toFixed(2).replace('.', ',');
+    const fmtD = (d: Date | null | undefined) => d ? new Date(d).toLocaleDateString("pt-BR") : "__/__/____";
+    const yn = (v: string | null | undefined) => v === "yes" ? "SIM" : v === "no" ? "NÃO" : "-";
+    const SEP = "--------------------------------------------------------------------------";
+    const addr = [order?.client?.street, order?.client?.number, order?.client?.neighborhood].filter(Boolean).join(", ") || "-";
+    const city = [order?.client?.city, order?.client?.state].filter(Boolean).join(" - ") || "";
+
+    const serviceRows = s.map(item => {
+      const name = (item.description || "").padEnd(22).substring(0, 22);
+      const qty = String(item.quantity || 1).padStart(4);
+      const price = fmtR(Number(item.unitPrice || 0)).padStart(8);
+      const disc2 = item.discount ? fmtR(Number(item.discount)).padStart(6) : "     -";
+      const total = fmtR(Number(item.total || 0)).padStart(8);
+      return `<tr><td>${name}</td><td style="text-align:right">${qty}</td><td style="text-align:right">${price}</td><td style="text-align:right">${disc2}</td><td style="text-align:right">${total}</td></tr>`;
+    }).join("");
+
+    const productRows = p.map(item => {
+      const name = (item.description || "").padEnd(22).substring(0, 22);
+      const qty = String(item.quantity || 1).padStart(4);
+      const price = fmtR(Number(item.unitPrice || 0)).padStart(8);
+      const disc2 = item.discount ? fmtR(Number(item.discount)).padStart(6) : "     -";
+      const total = fmtR(Number(item.total || 0)).padStart(8);
+      return `<tr><td>${name}</td><td style="text-align:right">${qty}</td><td style="text-align:right">${price}</td><td style="text-align:right">${disc2}</td><td style="text-align:right">${total}</td></tr>`;
+    }).join("");
+
+    const now = new Date();
+    const nowStr = now.toLocaleDateString("pt-BR") + " " + now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+
+    return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Cupom OS ${order?.id} - ProTech TI</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Courier New', Courier, monospace; font-size: 11px; color: #000; background: #fff; }
+    .page { width: 72mm; margin: 0 auto; padding: 4mm 3mm; }
+    .center { text-align: center; }
+    .bold { font-weight: bold; }
+    .sep { border: none; border-top: 1px dashed #555; margin: 4px 0; }
+    .header-logo { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+    .logo-box { width: 32px; height: 32px; background: #1a1a2e; border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .logo-box svg { width: 20px; height: 20px; fill: #00D9FF; }
+    .company-info { font-size: 10px; line-height: 1.4; }
+    .company-name { font-size: 13px; font-weight: bold; }
+    .os-title { text-align: center; font-size: 13px; font-weight: bold; margin: 6px 0 2px; }
+    table.items { width: 100%; border-collapse: collapse; font-size: 10px; }
+    table.items th { font-weight: bold; text-align: left; padding: 1px 2px; border-bottom: 1px solid #000; }
+    table.items td { padding: 1px 2px; vertical-align: top; }
+    table.items th:not(:first-child), table.items td:not(:first-child) { text-align: right; }
+    .total-line { display: flex; justify-content: space-between; font-size: 11px; margin: 2px 0; }
+    .grand-total { display: flex; justify-content: space-between; font-size: 14px; font-weight: bold; border-top: 2px solid #000; padding-top: 4px; margin-top: 4px; }
+    .sig-area { display: flex; gap: 10px; margin-top: 16px; }
+    .sig-box { flex: 1; text-align: center; }
+    .sig-line { border-top: 1px solid #000; margin-top: 24px; padding-top: 3px; font-size: 9px; }
+    .footer-note { font-size: 9px; text-align: center; margin-top: 8px; font-style: italic; }
+    @media print {
+      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      @page { size: 80mm auto; margin: 0; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+  <!-- CABEÇALHO -->
+  <div class="header-logo">
+    <div class="logo-box">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8" style="fill:none;stroke:#00D9FF;stroke-width:2"/><line x1="16" y1="13" x2="8" y2="13" style="fill:none;stroke:#00D9FF;stroke-width:2"/><line x1="16" y1="17" x2="8" y2="17" style="fill:none;stroke:#00D9FF;stroke-width:2"/></svg>
+    </div>
+    <div class="company-info">
+      <div class="company-name">ProTech TI</div>
+      <div>Soluções em Tecnologia da Informação</div>
+      <div>sistema.protechti.com.br</div>
+      ${order?.technician ? `<div>Vendedor: ${order.technician}</div>` : ""}
+    </div>
+  </div>
+  <hr class="sep">
+
+  <!-- TÍTULO DA OS -->
+  <div class="os-title">ORDEM DE SERVIÇO Nº ${order?.id}</div>
+  <hr class="sep">
+
+  <!-- INFORMAÇÕES GERAIS -->
+  <div><span class="bold">Data:</span> ${fmtD(order?.createdAt)}</div>
+  ${order?.missingKeyboard ? `<div><span class="bold">TECLA FALTANDO:</span> ${yn(order.missingKeyboard)}</div>` : ""}
+  ${order?.crackedScreen ? `<div><span class="bold">TELA TRINCADA:</span> ${yn(order.crackedScreen)}</div>` : ""}
+  ${order?.missingCharger ? `<div><span class="bold">CARREGADOR:</span> ${yn(order.missingCharger)}</div>` : ""}
+  ${order?.missingBag ? `<div><span class="bold">BOLSA:</span> ${yn(order.missingBag)}</div>` : ""}
+  ${order?.poweringOn ? `<div><span class="bold">LIGANDO:</span> ${yn(order.poweringOn)}</div>` : ""}
+  ${order?.missingPowerCable ? `<div><span class="bold">CABO DE ENERGIA:</span> ${yn(order.missingPowerCable)}</div>` : ""}
+  <hr class="sep">
+
+  <!-- CLIENTE -->
+  <div><span class="bold">Cliente:</span> ${order?.client?.name || "-"}</div>
+  ${order?.client?.cnpjCpf ? `<div><span class="bold">CNPJ/CPF:</span> ${order.client.cnpjCpf}</div>` : ""}
+  ${addr !== "-" ? `<div><span class="bold">Endereço:</span> ${addr}</div>` : ""}
+  ${city ? `<div><span class="bold">Cidade:</span> ${city}</div>` : ""}
+  ${order?.client?.phone ? `<div><span class="bold">Telefone:</span> ${order.client.phone}</div>` : ""}
+  ${order?.client?.email ? `<div><span class="bold">E-mail:</span> ${order.client.email}</div>` : ""}
+  <hr class="sep">
+
+  <!-- EQUIPAMENTO -->
+  <div class="center bold">EQUIPAMENTO</div>
+  <hr class="sep">
+  <table class="items">
+    <thead><tr><th>Nome</th><th>Marca</th><th>Modelo</th><th>Série</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>${order?.equipmentName || "-"}</td>
+        <td style="text-align:right">${order?.equipmentBrand || "-"}</td>
+        <td style="text-align:right">${order?.equipmentModel || "-"}</td>
+        <td style="text-align:right">${order?.equipmentSerial || "-"}</td>
+      </tr>
+    </tbody>
+  </table>
+  ${order?.reportedDefects ? `<hr class="sep"><div><span class="bold">Condições</span></div><div>${order.reportedDefects}</div>` : ""}
+  <hr class="sep">
+
+  ${s.length > 0 ? `
+  <!-- SERVIÇOS -->
+  <div class="center bold">DETALHES DO SERVIÇO</div>
+  <hr class="sep">
+  <table class="items">
+    <thead><tr><th>NOME</th><th>QTD</th><th>VL.UNT.</th><th>DESC</th><th>TOTAL</th></tr></thead>
+    <tbody>${serviceRows}</tbody>
+  </table>
+  <div class="total-line"><span>Total dos serviços:</span><span>${fmtR(sTotal)}</span></div>
+  <hr class="sep">` : ""}
+
+  ${p.length > 0 ? `
+  <!-- PRODUTOS -->
+  <div class="center bold">DETALHES DA VENDA</div>
+  <hr class="sep">
+  <table class="items">
+    <thead><tr><th>NOME</th><th>QTD</th><th>VL.UNT</th><th>DESC</th><th>TOTAL</th></tr></thead>
+    <tbody>${productRows}</tbody>
+  </table>
+  <hr class="sep">` : ""}
+
+  <!-- TOTAIS -->
+  ${lCost > 0 ? `<div class="total-line"><span>Mão de Obra:</span><span>${fmtR(lCost)}</span></div>` : ""}
+  ${sCost > 0 ? `<div class="total-line"><span>Frete:</span><span>${fmtR(sCost)}</span></div>` : ""}
+  ${oCost > 0 ? `<div class="total-line"><span>Outros:</span><span>${fmtR(oCost)}</span></div>` : ""}
+  ${disc > 0 ? `<div class="total-line"><span>Desconto:</span><span>- ${fmtR(disc)}</span></div>` : ""}
+  <div class="grand-total"><span>Total da ordem de serviço:</span><span>${fmtR(grandTotal)}</span></div>
+  <hr class="sep">
+
+  <!-- OBSERVAÇÕES -->
+  <div class="center bold">OBSERVAÇÕES</div>
+  <hr class="sep">
+  <div style="font-size:9px">${order?.publicNotes || "Caso o cliente não aprove o orçamento e não retire o equipamento em até 30 (trinta) dias, a empresa poderá considerá-lo abandonado, podendo destiná-lo ao descarte, reciclagem ou doação, conforme o art. 1.263 do Código Civil Brasileiro."}</div>
+  <hr class="sep">
+  <div class="center bold footer-note">*** Este cupom não é documento fiscal ***</div>
+  <hr class="sep">
+
+  <!-- DATAS -->
+  <div style="display:flex;justify-content:space-between;font-size:10px">
+    <span>Ent.: ${nowStr}</span>
+    <span>Saída: __/__/____ __:__</span>
+  </div>
+
+  <!-- ASSINATURAS -->
+  <div class="sig-area">
+    <div class="sig-box">
+      <div class="sig-line">Assinatura do cliente</div>
+    </div>
+    <div class="sig-box">
+      <div class="sig-line">Assinatura do técnico</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>`;
+  };
+
+  const handlePrintCupom = () => {
+    const html = buildCupomHTML();
+    const printWindow = window.open("", "", "height=900,width=400");
+    if (printWindow) {
+      printWindow.document.write(html);
+      printWindow.document.close();
+      setTimeout(() => printWindow.print(), 500);
+    }
+  };
+
   const handlePrint = () => {
     const html = buildPrintHTML();
     const printWindow = window.open("", "", "height=900,width=900");
@@ -427,9 +622,13 @@ export default function OSDetail() {
             <Pencil className="w-4 h-4 mr-1" />
             Editar
           </Button>
+          <Button variant="outline" size="sm" onClick={handlePrintCupom}>
+            <Printer className="w-4 h-4 mr-1" />
+            Cupom
+          </Button>
           <Button variant="outline" size="sm" onClick={handlePrint}>
             <Printer className="w-4 h-4 mr-1" />
-            Imprimir
+            Imprimir A4
           </Button>
           <Button variant="default" size="sm" onClick={handleDownloadPDF}>
             <Download className="w-4 h-4 mr-1" />

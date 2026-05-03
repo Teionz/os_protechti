@@ -68,3 +68,10 @@
 
 ### Relatórios
 - [ ] Gerar (gerar relatórios da OS)
+
+## Melhorias OSForm e OSDetail
+- [x] Corrigir validação de equipamento existente na edição de OS (não acusar etiqueta duplicada ao editar)
+- [x] Adicionar campo de desconto com opção % ou valor fixo no formulário de OS
+- [x] Exibir desconto na visualização da OS para o cliente
+- [x] Criar template de impressão em cupom térmico (80mm) baseado no modelo do sistema antigo
+- [x] Separar botões de impressão: Formato A4 e Cupom
