@@ -177,6 +177,7 @@ export const appRouter = router({
         shippingCost: z.string().optional(),
         otherCosts: z.string().optional(),
         discount: z.string().optional(),
+        discountType: z.enum(["fixed", "percent"]).optional(),
       }))
       .mutation(({ input }) => db.createOrder(input)),
     update: publicProcedure
@@ -220,6 +221,7 @@ export const appRouter = router({
           shippingCost: z.string().optional(),
           otherCosts: z.string().optional(),
           discount: z.string().optional(),
+          discountType: z.enum(["fixed", "percent"]).optional(),
         }),
       }))
       .mutation(({ input }) => db.updateOrder(input.id, input.data)),

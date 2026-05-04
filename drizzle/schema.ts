@@ -154,6 +154,7 @@ export const orders = mysqlTable("orders", {
   shippingCost: decimal("shippingCost", { precision: 12, scale: 2 }).default("0"),
   otherCosts: decimal("otherCosts", { precision: 12, scale: 2 }).default("0"),
   discount: decimal("discount", { precision: 12, scale: 2 }).default("0"),
+  discountType: mysqlEnum("discountType", ["fixed", "percent"]).default("fixed"),
   
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

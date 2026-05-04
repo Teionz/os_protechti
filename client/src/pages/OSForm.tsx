@@ -205,6 +205,8 @@ export default function OSForm() {
         otherCosts: o.otherCosts || "",
         discount: o.discount || "",
       });
+      // Restaurar tipo de desconto salvo
+      if (o.discountType) setDiscountType(o.discountType as 'fixed' | 'percent');
 
       if (existingOrderItems && existingOrderItems.length > 0) {
         const svc = existingOrderItems
@@ -380,7 +382,8 @@ export default function OSForm() {
         partsCost: formData.partsCost,
         shippingCost: formData.shippingCost,
         otherCosts: formData.otherCosts,
-        discount: formData.discount,
+        discount: discountNum.toString(),
+        discountType: discountType,
         total: totalGeral.toString(),
       };
 
@@ -1052,7 +1055,7 @@ export default function OSForm() {
             <SectionHeader title="Resumo Financeiro" section="resumo" />
             {expandedSections.resumo && (
               <div className="space-y-4">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <Label className="text-foreground text-sm">Mão de Obra (R$)</Label>
                     <Input
@@ -1089,16 +1092,18 @@ export default function OSForm() {
                       className="mt-1 bg-background border-border"
                     />
                   </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label className="text-foreground text-sm">Desconto</Label>
                     <div className="flex gap-2 mt-1">
                       <Select value={discountType} onValueChange={(v) => setDiscountType(v as 'percent' | 'fixed')}>
-                        <SelectTrigger className="w-24 bg-background border-border">
+                        <SelectTrigger className="w-28 bg-background border-border">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="fixed">R$</SelectItem>
-                          <SelectItem value="percent">%</SelectItem>
+                          <SelectItem value="fixed">R$ (fixo)</SelectItem>
+                          <SelectItem value="percent">% (percentual)</SelectItem>
                         </SelectContent>
                       </Select>
                       <Input
@@ -1111,6 +1116,11 @@ export default function OSForm() {
                         className="bg-background border-border"
                       />
                     </div>
+                    {discountType === 'percent' && parseFloat(formData.discount) > 0 && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        = R$ {discountNum.toFixed(2)} de desconto sobre o subtotal
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-accent/20">
