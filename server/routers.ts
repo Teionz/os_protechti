@@ -374,6 +374,7 @@ export const appRouter = router({
         quantity: z.number(),
         unitPrice: z.string(),
         discount: z.string().optional(),
+        discountType: z.enum(["fixed", "percent"]).optional(),
         total: z.string(),
       }))
       .mutation(({ input }) => db.createOrderItem(input)),

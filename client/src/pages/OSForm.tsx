@@ -103,6 +103,7 @@ export default function OSForm() {
     quantity: number;
     price: number;
     discount: number;
+    discountType: 'percent' | 'fixed';
   }>>([]);
 
   const [osProducts, setOsProducts] = useState<Array<{
@@ -112,6 +113,7 @@ export default function OSForm() {
     quantity: number;
     price: number;
     discount: number;
+    discountType: 'percent' | 'fixed';
   }>>([]);
 
   const [equipmentSearch, setEquipmentSearch] = useState("");
@@ -218,6 +220,7 @@ export default function OSForm() {
             quantity: parseInt(item.quantity) || 1,
             price: parseFloat(item.unitPrice) || 0,
             discount: parseFloat(item.discount) || 0,
+            discountType: (item.discountType as 'percent' | 'fixed') || 'percent',
           }));
         const prd = existingOrderItems
           .filter((item: any) => item.type === "product")
@@ -228,6 +231,7 @@ export default function OSForm() {
             quantity: parseInt(item.quantity) || 1,
             price: parseFloat(item.unitPrice) || 0,
             discount: parseFloat(item.discount) || 0,
+            discountType: (item.discountType as 'percent' | 'fixed') || 'percent',
           }));
         setOsServices(svc);
         setOsProducts(prd);
@@ -266,7 +270,7 @@ export default function OSForm() {
 
   // Serviços - adicionar linha manual
   const handleAddServiceRow = () => {
-    setOsServices(prev => [...prev, { id: Date.now(), name: "", details: "", quantity: 1, price: 0, discount: 0 }]);
+    setOsServices(prev => [...prev, { id: Date.now(), name: "", details: "", quantity: 1, price: 0, discount: 0, discountType: 'percent' as const }]);
   };
 
   const handleRemoveService = async (id: number) => {
@@ -282,7 +286,7 @@ export default function OSForm() {
 
   // Produtos - adicionar linha manual
   const handleAddProductRow = () => {
-    setOsProducts(prev => [...prev, { id: Date.now(), name: "", details: "", quantity: 1, price: 0, discount: 0 }]);
+    setOsProducts(prev => [...prev, { id: Date.now(), name: "", details: "", quantity: 1, price: 0, discount: 0, discountType: 'percent' as const }]);
   };
 
   const handleRemoveProduct = async (id: number) => {
@@ -297,8 +301,10 @@ export default function OSForm() {
   };
 
   // Calcular subtotais
-  const calcSubtotal = (item: { quantity: number; price: number; discount: number }) => {
+  const calcSubtotal = (item: { quantity: number; price: number; discount: number; discountType?: 'percent' | 'fixed' }) => {
     const sub = item.quantity * item.price;
+    const dtype = item.discountType ?? 'percent';
+    if (dtype === 'fixed') return Math.max(0, sub - item.discount);
     return sub - (sub * (item.discount / 100));
   };
 
@@ -414,6 +420,7 @@ export default function OSForm() {
           quantity: service.quantity,
           unitPrice: service.price.toString(),
           discount: service.discount ? service.discount.toString() : undefined,
+          discountType: service.discountType,
           total: calcSubtotal(service).toString(),
         });
       }
@@ -428,6 +435,7 @@ export default function OSForm() {
           quantity: product.quantity,
           unitPrice: product.price.toString(),
           discount: product.discount ? product.discount.toString() : undefined,
+          discountType: product.discountType,
           total: calcSubtotal(product).toString(),
         });
       }
@@ -789,7 +797,7 @@ export default function OSForm() {
                   <div className="col-span-3">Detalhes</div>
                   <div className="col-span-1 text-center">Qtd</div>
                   <div className="col-span-2 text-right">Valor (R$)</div>
-                  <div className="col-span-1 text-right">Desc (%)</div>
+                  <div className="col-span-2 text-right">Desc</div>
                   <div className="col-span-1 text-right">Subtotal</div>
                   <div className="col-span-1"></div>
                 </div>
@@ -865,11 +873,22 @@ export default function OSForm() {
                         className="bg-background border-border text-right text-sm"
                       />
                     </div>
-                    <div className="col-span-3 md:col-span-1">
+                    <div className="col-span-3 md:col-span-2 flex gap-1">
+                      <Select
+                        value={service.discountType}
+                        onValueChange={(v) => handleUpdateService(service.id, "discountType", v)}
+                      >
+                        <SelectTrigger className="w-14 bg-background border-border text-xs px-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="percent">%</SelectItem>
+                          <SelectItem value="fixed">R$</SelectItem>
+                        </SelectContent>
+                      </Select>
                       <Input
                         type="number"
                         min="0"
-                        max="100"
                         placeholder="0"
                         value={service.discount || ""}
                         onChange={(e) => handleUpdateService(service.id, "discount", parseFloat(e.target.value) || 0)}
@@ -925,7 +944,7 @@ export default function OSForm() {
                   <div className="col-span-3">Detalhes</div>
                   <div className="col-span-1 text-center">Qtd</div>
                   <div className="col-span-2 text-right">Valor (R$)</div>
-                  <div className="col-span-1 text-right">Desc (%)</div>
+                  <div className="col-span-2 text-right">Desc</div>
                   <div className="col-span-1 text-right">Subtotal</div>
                   <div className="col-span-1"></div>
                 </div>
@@ -1001,11 +1020,22 @@ export default function OSForm() {
                         className="bg-background border-border text-right text-sm"
                       />
                     </div>
-                    <div className="col-span-3 md:col-span-1">
+                    <div className="col-span-3 md:col-span-2 flex gap-1">
+                      <Select
+                        value={product.discountType}
+                        onValueChange={(v) => handleUpdateProduct(product.id, "discountType", v)}
+                      >
+                        <SelectTrigger className="w-14 bg-background border-border text-xs px-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="percent">%</SelectItem>
+                          <SelectItem value="fixed">R$</SelectItem>
+                        </SelectContent>
+                      </Select>
                       <Input
                         type="number"
                         min="0"
-                        max="100"
                         placeholder="0"
                         value={product.discount || ""}
                         onChange={(e) => handleUpdateProduct(product.id, "discount", parseFloat(e.target.value) || 0)}

@@ -77,3 +77,9 @@
 - [x] Exibir desconto na visualização da OS para o cliente
 - [x] Criar template de impressão em cupom térmico (80mm) baseado no modelo do sistema antigo
 - [x] Separar botões de impressão: Formato A4 e Cupom
+
+## Desconto por item (serviço/produto)
+- [x] Adicionar seletor R$/% em cada linha de serviço no OSForm
+- [x] Adicionar seletor R$/% em cada linha de produto no OSForm
+- [x] Ajustar cálculo de subtotal por item para respeitar o tipo de desconto
+- [x] Persistir discountType por item no banco e restaurar ao editar

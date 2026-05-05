@@ -172,7 +172,8 @@ export const orderItems = mysqlTable("orderItems", {
   details: text("details"),
   quantity: int("quantity").default(1),
   unitPrice: decimal("unitPrice", { precision: 10, scale: 2 }).notNull(),
-  discount: decimal("discount", { precision: 5, scale: 2 }).default("0"),
+  discount: decimal("discount", { precision: 12, scale: 2 }).default("0"),
+  discountType: mysqlEnum("discountType", ["fixed", "percent"]).default("percent"),
   total: decimal("total", { precision: 12, scale: 2 }).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
