@@ -83,3 +83,7 @@
 - [x] Adicionar seletor R$/% em cada linha de produto no OSForm
 - [x] Ajustar cálculo de subtotal por item para respeitar o tipo de desconto
 - [x] Persistir discountType por item no banco e restaurar ao editar
+
+## Coluna de desconto por item na visualização e impressão
+- [x] Adicionar coluna Desc nas tabelas de Serviços e Produtos do JSX da OSDetail
+- [x] Adicionar coluna Desc no template de impressão A4 (buildPrintHTML)

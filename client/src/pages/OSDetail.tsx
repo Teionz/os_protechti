@@ -69,6 +69,12 @@ export default function OSDetail() {
     const statusLbl = STATUS_LABELS[order?.status || ""] || order?.status || "-";
     const addr = [order?.client?.street, order?.client?.number, order?.client?.neighborhood, order?.client?.city].filter(Boolean).join(", ") || "-";
 
+    const fmtDisc = (item: any) => {
+      const dv = Number(item.discount || 0);
+      if (dv <= 0) return "-";
+      return (item.discountType === 'fixed') ? fmtR(dv) : `${dv}%`;
+    };
+
     const serviceRows = s.map((item, idx) => `
       <tr>
         <td style="text-align:center">${idx + 1}</td>
@@ -76,6 +82,7 @@ export default function OSDetail() {
         <td>${item.details || "-"}</td>
         <td style="text-align:center">${item.quantity}</td>
         <td style="text-align:right">${fmtR(Number(item.unitPrice || 0))}</td>
+        <td style="text-align:right;color:#c00">${fmtDisc(item)}</td>
         <td style="text-align:right;font-weight:bold">${fmtR(Number(item.total || 0))}</td>
       </tr>`).join("");
 
@@ -86,6 +93,7 @@ export default function OSDetail() {
         <td>${item.details || "-"}</td>
         <td style="text-align:center">${item.quantity}</td>
         <td style="text-align:right">${fmtR(Number(item.unitPrice || 0))}</td>
+        <td style="text-align:right;color:#c00">${fmtDisc(item)}</td>
         <td style="text-align:right;font-weight:bold">${fmtR(Number(item.total || 0))}</td>
       </tr>`).join("");
 
@@ -247,9 +255,9 @@ export default function OSDetail() {
   <div class="section">
     <div class="section-header">Serviços</div>
     <table class="items">
-      <thead><tr><th style="width:30px">#</th><th>Serviço</th><th>Detalhes</th><th style="width:40px;text-align:center">Qtd</th><th style="width:90px;text-align:right">Vl. Unit.</th><th style="width:90px;text-align:right">Subtotal</th></tr></thead>
+      <thead><tr><th style="width:30px">#</th><th>Serviço</th><th>Detalhes</th><th style="width:40px;text-align:center">Qtd</th><th style="width:90px;text-align:right">Vl. Unit.</th><th style="width:70px;text-align:right">Desc</th><th style="width:90px;text-align:right">Subtotal</th></tr></thead>
       <tbody>${serviceRows}
-        <tr class="total-row"><td colspan="5" style="text-align:right">Total Serviços:</td><td style="text-align:right">${fmtR(sTotal)}</td></tr>
+        <tr class="total-row"><td colspan="6" style="text-align:right">Total Serviços:</td><td style="text-align:right">${fmtR(sTotal)}</td></tr>
       </tbody>
     </table>
   </div>` : ""}
@@ -259,9 +267,9 @@ export default function OSDetail() {
   <div class="section">
     <div class="section-header">Produtos</div>
     <table class="items">
-      <thead><tr><th style="width:30px">#</th><th>Produto</th><th>Detalhes</th><th style="width:40px;text-align:center">Qtd</th><th style="width:90px;text-align:right">Vl. Unit.</th><th style="width:90px;text-align:right">Subtotal</th></tr></thead>
+      <thead><tr><th style="width:30px">#</th><th>Produto</th><th>Detalhes</th><th style="width:40px;text-align:center">Qtd</th><th style="width:90px;text-align:right">Vl. Unit.</th><th style="width:70px;text-align:right">Desc</th><th style="width:90px;text-align:right">Subtotal</th></tr></thead>
       <tbody>${productRows}
-        <tr class="total-row"><td colspan="5" style="text-align:right">Total Produtos:</td><td style="text-align:right">${fmtR(pTotal)}</td></tr>
+        <tr class="total-row"><td colspan="6" style="text-align:right">Total Produtos:</td><td style="text-align:right">${fmtR(pTotal)}</td></tr>
       </tbody>
     </table>
   </div>` : ""}
@@ -897,13 +905,22 @@ export default function OSDetail() {
                       <th className="border border-gray-300 px-3 py-2 text-right font-semibold w-28">
                         Vl. Unit.
                       </th>
+                      <th className="border border-gray-300 px-3 py-2 text-right font-semibold w-24">
+                        Desc
+                      </th>
                       <th className="border border-gray-300 px-3 py-2 text-right font-semibold w-28">
                         Subtotal
                       </th>
                     </tr>
                   </thead>
                   <tbody>
-                    {services.map((item, idx) => (
+                    {services.map((item, idx) => {
+                      const discVal = Number(item.discount || 0);
+                      const discType = (item as any).discountType || 'percent';
+                      const discLabel = discVal > 0
+                        ? (discType === 'percent' ? `${discVal}%` : fmt(discVal))
+                        : '-';
+                      return (
                       <tr key={item.id} className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}>
                         <td className="border border-gray-300 px-3 py-2 text-center">
                           {idx + 1}
@@ -920,15 +937,19 @@ export default function OSDetail() {
                         <td className="border border-gray-300 px-3 py-2 text-right">
                           {fmt(Number(item.unitPrice || 0))}
                         </td>
+                        <td className="border border-gray-300 px-3 py-2 text-right text-red-600">
+                          {discLabel}
+                        </td>
                         <td className="border border-gray-300 px-3 py-2 text-right font-semibold">
                           {fmt(Number(item.total || 0))}
                         </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                     <tr className="bg-gray-100 font-bold">
                       <td
                         className="border border-gray-300 px-3 py-2 text-right"
-                        colSpan={5}
+                        colSpan={6}
                       >
                         Total Serviços:
                       </td>
@@ -965,13 +986,22 @@ export default function OSDetail() {
                       <th className="border border-gray-300 px-3 py-2 text-right font-semibold w-28">
                         Vl. Unit.
                       </th>
+                      <th className="border border-gray-300 px-3 py-2 text-right font-semibold w-24">
+                        Desc
+                      </th>
                       <th className="border border-gray-300 px-3 py-2 text-right font-semibold w-28">
                         Subtotal
                       </th>
                     </tr>
                   </thead>
                   <tbody>
-                    {products.map((item, idx) => (
+                    {products.map((item, idx) => {
+                      const discVal = Number(item.discount || 0);
+                      const discType = (item as any).discountType || 'percent';
+                      const discLabel = discVal > 0
+                        ? (discType === 'percent' ? `${discVal}%` : fmt(discVal))
+                        : '-';
+                      return (
                       <tr key={item.id} className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}>
                         <td className="border border-gray-300 px-3 py-2 text-center">
                           {idx + 1}
@@ -988,15 +1018,19 @@ export default function OSDetail() {
                         <td className="border border-gray-300 px-3 py-2 text-right">
                           {fmt(Number(item.unitPrice || 0))}
                         </td>
+                        <td className="border border-gray-300 px-3 py-2 text-right text-red-600">
+                          {discLabel}
+                        </td>
                         <td className="border border-gray-300 px-3 py-2 text-right font-semibold">
                           {fmt(Number(item.total || 0))}
                         </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                     <tr className="bg-gray-100 font-bold">
                       <td
                         className="border border-gray-300 px-3 py-2 text-right"
-                        colSpan={5}
+                        colSpan={6}
                       >
                         Total Produtos:
                       </td>
