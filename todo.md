@@ -5,7 +5,7 @@
 - [x] Exibir etiqueta de controle na página de edição da OS
 - [x] Validar etiqueta única em todo o sistema
 - [ ] Permitir selecionar equipamento existente ao criar OS
-- [ ] Criar página de histórico de manutenção por equipamento
+- [x] Criar página de histórico de manutenção por equipamento
 
 ## Ordens de Serviço
 - [x] Criar nova OS com cliente e equipamento
@@ -34,7 +34,7 @@
 ## Geral
 - [x] Autenticação com Manus OAuth
 - [x] Dashboard com estatísticas
-- [ ] Relatórios de OS por período
+- [x] Relatórios de OS por período com filtro de data
 - [ ] Exportar OS em PDF
 
 ## Ações na Ordem de Serviço (Menu)

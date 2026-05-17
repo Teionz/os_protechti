@@ -1,0 +1,41 @@
+{
+  "build_command": "pnpm run build",
+  "capabilities": [
+    "db",
+    "server",
+    "user"
+  ],
+  "dev_command": "pnpm run dev",
+  "env_vars": {
+    "DATABASE_URL": "mysql://KP8NVK5AV97st8C.root:12kBa3gpgow7vi3Lq4IZ@gateway04.us-east-1.prod.aws.tidbcloud.com:4000/FJd3uqNmCbmnzf6FC4SPdE?ssl={\"rejectUnauthorized\":true}"
+  },
+  "experiments": null,
+  "git_remote": {
+    "repo_url": "s3://vida-prod-gitrepo/webdev-git/310519663082385262/FJd3uqNmCbmnzf6FC4SPdE",
+    "access_key_id": "ASIAZV3A2ECZK2UTLT23",
+    "secret_access_key": "Y4e2MywOrlZEjvvuqZKURCIu7XWRyklafnrxB4/G",
+    "session_token": "IQoJb3JpZ2luX2VjENv//////////wEaCXVzLWVhc3QtMSJGMEQCIG+IOTkl8Hvu2iSE6Nij/CNfi23eLDfher2TZ/2OmfNeAiBbjR24IbN+Kv3pxzrkxaliG8OCaLTtLAciu6wwBvk0GCr/Awik//////////8BEAQaDDY2NTM4NjA5ODg2NiIMXs6i47kcxrxE7pbdKtMDUQZYzhxTtnSeSUNuFZ2t39hhtUp4RrO5wO6Ysh74QAJOcj337EfLPfC1HTo3ubpcUzP7Wa2EVIDj+He4yjau01F2M1BwWFclpWggk87w7rzwTyQ9C36TBFu6MJb7XV/ezk3mAvlj1kT1IArMdKWyPd10AOmxiNmXUcJbhSJSA8tXU+AXlyqq9cd7RLsqtlQoNKp0afaO0byhOl72eH6C9GbGoa6DJ1WuxF6O2e9JRB4OrHcPzhK5Ssc5G7+WqVDz72nXiEPUfj6+4Zp+mg+kHL+PIypetlez13MEFcWkRjqCJDYn7AwoIavWveCQ3STebQiCrReaagbsh1EV5wfSDTRnI7qM1EAuqfrsQWoytL83cO3BPHA0j4f6n7M4EDVs34Wzh5mTs72zXVUJCWJwgVBsfIW0H4Y9lzufy0I3RUs0OppbMqS7+j4xlrcty9XTeEUX5ZWL+z/ZSwAoHZ+Odv6G6w+tpTwuDXq3FSQU2HfmRKIq85gjNHLAMNzRYhcW41mjbV8vRdHj4deTN7utVuJSbneu0Km9O7OksfEdnmVwpseIvAKm/jYyJFt0xooVAaQoU3i6g4jqUipKykN5Pjgo7WCTS0YmxGyTAYNV+t9T2OQwzbGm0AY6ngFIzgVlDTSfkJv5DOVK5siK0qSjdqErbVqckQ0DcRywstJroc3dk0tNI460c7WNzLsuOZisK225sLvaPU6i231QWSX4IYIYJFAOdNh4VhfDnI0mQjELFZssOoNlSx+mu5DASqP5tjj4krwFy/gDeAZqEi0DDC0UJIWayA2vif135seYc5YEr+dE4uU7rXKOY58nFEOE2bRECjsTprEvvQ==",
+    "expiration": "2026-05-17T22:30:37.000Z"
+  },
+  "name": "os_protechti",
+  "path": "/home/ubuntu/os_protechti",
+  "port": 3000,
+  "secrets": {
+    "BUILT_IN_FORGE_API_KEY": "FAZhuwstZZuNAf6SvAZo7d",
+    "BUILT_IN_FORGE_API_URL": "https://forge.manus.ai",
+    "JWT_SECRET": "bCthQSUGDP6jaAWsZRPm42",
+    "OAUTH_SERVER_URL": "https://api.manus.im",
+    "OWNER_NAME": "Pro Tech",
+    "OWNER_OPEN_ID": "Di6fZ6YbLzR5xzFWMxhAt4",
+    "VITE_ANALYTICS_ENDPOINT": "https://manus-analytics.com",
+    "VITE_ANALYTICS_WEBSITE_ID": "f74a76e9-cfc7-415d-98d3-e234ad68879f",
+    "VITE_APP_ID": "FJd3uqNmCbmnzf6FC4SPdE",
+    "VITE_APP_LOGO": "https://files.manuscdn.com/user_upload_by_module/web_dev_logo/310519663082385262/HiazjsyjYkwTPYeJ.png",
+    "VITE_APP_TITLE": "Sistema de Gestao ProtechTI",
+    "VITE_FRONTEND_FORGE_API_KEY": "HAkiNWVKutEufzjR4gd89B",
+    "VITE_FRONTEND_FORGE_API_URL": "https://forge.manus.ai",
+    "VITE_OAUTH_PORTAL_URL": "https://manus.im"
+  },
+  "template_id": "web-db-user",
+  "test_command": "pnpm test"
+}

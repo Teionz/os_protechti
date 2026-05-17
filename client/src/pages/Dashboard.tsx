@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Layout from "@/components/Layout";
-import { Plus, FileText, Users, DollarSign, TrendingUp, ShoppingCart, Loader2 } from "lucide-react";
+import { Plus, FileText, Users, DollarSign, TrendingUp, ShoppingCart, Loader2, BarChart3 } from "lucide-react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 
@@ -148,6 +148,20 @@ export default function Dashboard() {
             </h3>
             <p className="text-sm text-muted-foreground">
               Visualize todas as ordens de serviço
+            </p>
+          </Card>
+
+          <Card className="card-float p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:border-accent/50 transition"
+            onClick={() => navigate("/reports")}
+          >
+            <div className="w-16 h-16 rounded-full bg-purple-500/20 flex items-center justify-center mb-4">
+              <BarChart3 className="w-8 h-8 text-purple-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-foreground mb-2">
+              Relatórios
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              Análise de ordens por período
             </p>
           </Card>
         </div>

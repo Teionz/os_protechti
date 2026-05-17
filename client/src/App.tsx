@@ -20,6 +20,8 @@ import QuotationList from "./pages/QuotationList";
 import QuotationForm from "./pages/QuotationForm";
 import SalesList from "./pages/SalesList";
 import SalesForm from "./pages/SalesForm";
+import EquipmentHistory from "./pages/EquipmentHistory";
+import Reports from "./pages/Reports";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -51,6 +53,8 @@ function Router() {
       <Route path={"sales/new"} component={SalesForm} />
       <Route path={"sales/edit/:id"} component={SalesForm} />
       <Route path={"sales/:id"} component={SalesList} />
+      <Route path={"equipment/:id/history"} component={EquipmentHistory} />
+      <Route path={"reports"} component={Reports} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />
