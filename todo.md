@@ -87,3 +87,6 @@
 ## Coluna de desconto por item na visualização e impressão
 - [x] Adicionar coluna Desc nas tabelas de Serviços e Produtos do JSX da OSDetail
 - [x] Adicionar coluna Desc no template de impressão A4 (buildPrintHTML)
+
+## Compartilhamento e Integração
+- [x] Adicionar botão de compartilhar OS via WhatsApp com mensagem pré-formatada

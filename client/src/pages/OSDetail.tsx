@@ -5,7 +5,7 @@ import { useRef } from "react";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { trpc } from "@/lib/trpc";
-import { Printer, Download, ArrowLeft, Pencil } from "lucide-react";
+import { Printer, Download, ArrowLeft, Pencil, MessageCircle } from "lucide-react";
 
 const STATUS_LABELS: Record<string, string> = {
   budgeting: "Orçando",
@@ -526,6 +526,40 @@ export default function OSDetail() {
     }
   };
 
+  const handleShareWhatsApp = () => {
+    if (!order) return;
+    
+    const s = services || [];
+    const p = products || [];
+    const sTotal = s.reduce((sum: number, i: any) => sum + Number(i.total || 0), 0);
+    const pTotal = p.reduce((sum: number, i: any) => sum + Number(i.total || 0), 0);
+    const lCost = Number(order.laborCost || 0);
+    const mCost = Number(order.shippingCost || 0);
+    const oCost = Number(order.otherCosts || 0);
+    const subTotal = sTotal + pTotal + lCost + mCost + oCost;
+    const discountValue = Number(order.discount || 0);
+    const total = subTotal - discountValue;
+
+    const servicesList = s.length > 0 
+      ? s.map((srv: any) => `• ${srv.name} (${srv.quantity}x R$ ${Number(srv.price || 0).toFixed(2)})`).join('\n')
+      : "Sem serviços";
+
+    const productsList = p.length > 0
+      ? p.map((prod: any) => `• ${prod.name} (${prod.quantity}x R$ ${Number(prod.price || 0).toFixed(2)})`).join('\n')
+      : "Sem produtos";
+
+    const equipmentName = order.equipmentTag ? `${order.equipmentTag}` : "N/A";
+    const message = `Olá! 👋\n\n*Ordem de Serviço #${order.id}*\n\n📋 *Dados da OS:*\nCliente: ${order.client?.name || "N/A"}\nEquipamento: ${equipmentName}\nStatus: ${STATUS_LABELS[order.status as keyof typeof STATUS_LABELS] || order.status}\n\n🔧 *Serviços:*\n${servicesList}\n\n📦 *Produtos:*\n${productsList}\n\n💰 *Resumo Financeiro:*\nSubtotal: R$ ${subTotal.toFixed(2)}\nDesconto: -R$ ${discountValue.toFixed(2)}\n*Total: R$ ${total.toFixed(2)}*\n\nObrigado!`;
+
+    const encodedMessage = encodeURIComponent(message);
+    const phoneNumber = order.client?.phone?.replace(/\D/g, '') || '';
+    const whatsappUrl = phoneNumber 
+      ? `https://wa.me/${phoneNumber}?text=${encodedMessage}`
+      : `https://web.whatsapp.com/?text=${encodedMessage}`;
+    
+    window.open(whatsappUrl, '_blank');
+  };
+
   const handleDownloadPDF = () => {
     const html = buildPrintHTML();
     const iframe = document.createElement('iframe');
@@ -641,6 +675,10 @@ export default function OSDetail() {
           <Button variant="default" size="sm" onClick={handleDownloadPDF}>
             <Download className="w-4 h-4 mr-1" />
             Baixar PDF
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleShareWhatsApp} className="bg-green-500/10 hover:bg-green-500/20 border-green-500/30">
+            <MessageCircle className="w-4 h-4 mr-1" />
+            Compartilhar WhatsApp
           </Button>
         </div>
       </div>
